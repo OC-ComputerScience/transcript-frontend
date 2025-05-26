@@ -15,6 +15,13 @@ export default () => {
     server: {
       host: "localhost",
       port: 8081,
+      proxy: {
+        '/transcripts': {
+          target: 'http://localhost',
+          changeOrigin: true,
+          secure: false
+        }
+      }
     },
 
     base: baseURL,

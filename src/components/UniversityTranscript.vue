@@ -2,8 +2,15 @@
 import { ref, computed, onMounted } from "vue";
 import UniversityTranscriptServices from "../services/universityTranscriptServices";
 import UniversityServices from "../services/universityServices";
+import UploadServices from "../services/uploadServices";
+import PDFViewer from "./PDFViewer.vue";
 
 const dialog = ref(false);
+const uploadDialog = ref(false);
+const pdfDialog = ref(false);
+const selectedFile = ref(null);
+const currentTranscript = ref(null);
+const currentPdfUrl = ref("");
 const loading = ref(false);
 const universityTranscripts = ref([]);
 const universities = ref([]);
@@ -23,6 +30,7 @@ const headers = [
   { title: "OC ID Number", key: "OCIdNumber" },
   { title: "University", key: "university.name" },
   { title: "Official", key: "official" },
+  { title: "PDF", key: "pdf" },
   { title: "Actions", key: "actions", sortable: false },
 ];
 
@@ -133,6 +141,37 @@ const openDialog = () => {
   dialog.value = true;
 };
 
+const openUploadDialog = (item) => {
+  currentTranscript.value = item;
+  uploadDialog.value = true;
+};
+
+const handleFileSelect = (event) => {
+  selectedFile.value = event.target.files[0];
+};
+
+const uploadFile = async () => {
+  if (!selectedFile.value || !currentTranscript.value) return;
+
+  console.log("Current transcript:", currentTranscript.value); // Debug log
+  try {
+    await UploadServices.uploadTranscript(
+      selectedFile.value,
+      currentTranscript.value.id
+    );
+    uploadDialog.value = false;
+    selectedFile.value = null;
+    currentTranscript.value = null;
+  } catch (error) {
+    console.error("Error uploading file:", error);
+  }
+};
+
+const viewPdf = (item) => {
+  currentPdfUrl.value = `/transcripts/transcript-backend/data/transcripts/transcript-${item.id}.pdf`;
+  pdfDialog.value = true;
+};
+
 onMounted(() => {
   initialize();
 });
@@ -162,11 +201,34 @@ onMounted(() => {
               {{ item.official ? "mdi-check-circle" : "mdi-close-circle" }}
             </v-icon>
           </template>
+          <template v-slot:item.pdf="{ item }">
+            <div class="d-flex align-center">
+              <v-icon
+                small
+                class="mr-2"
+                @click="openUploadDialog(item)"
+                color="primary"
+              >
+                mdi-file-pdf-box
+              </v-icon>
+              <v-icon small class="mr-2" @click="viewPdf(item)" color="primary">
+                mdi-eye
+              </v-icon>
+            </div>
+          </template>
           <template v-slot:item.actions="{ item }">
             <v-icon small class="mr-2" @click="editItem(item)">
               mdi-pencil
             </v-icon>
-            <v-icon small @click="deleteItem(item)"> mdi-delete </v-icon>
+            <v-icon small class="mr-2" @click="deleteItem(item)">
+              mdi-delete
+            </v-icon>
+            <v-icon
+              small
+              @click="$router.push(`/transcript-courses/${item.id}`)"
+            >
+              mdi-book-open-page-variant
+            </v-icon>
           </template>
         </v-data-table>
       </v-col>
@@ -215,5 +277,56 @@ onMounted(() => {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Upload Dialog -->
+    <v-dialog v-model="uploadDialog" max-width="500px">
+      <v-card>
+        <v-card-title>
+          <span class="text-h5">Upload Transcript PDF</span>
+        </v-card-title>
+
+        <v-card-text>
+          <v-container>
+            <v-row>
+              <v-col cols="12">
+                <v-file-input
+                  v-model="selectedFile"
+                  accept=".pdf"
+                  label="Select PDF file"
+                  prepend-icon="mdi-file-pdf-box"
+                  @change="handleFileSelect"
+                ></v-file-input>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="blue darken-1" text @click="uploadDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            color="blue darken-1"
+            text
+            @click="uploadFile"
+            :disabled="!selectedFile"
+          >
+            Upload
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- PDF Viewer Dialog -->
+    <v-dialog v-model="pdfDialog" max-width="900px" fullscreen>
+      <PDFViewer :path="currentPdfUrl" v-model="pdfDialog" />
+    </v-dialog>
   </v-container>
 </template>
+
+<style scoped>
+.v-dialog--fullscreen {
+  height: 90vh;
+}
+</style>

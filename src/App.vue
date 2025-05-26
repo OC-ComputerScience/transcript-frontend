@@ -2,15 +2,21 @@
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import Utils from "./utils/utils";
+import ocLogo from "/oc-logo-white.png";
+import AuthServices from "./services/authServices";
 
 const router = useRouter();
+const logoURL = ref();
+
+logoURL.value = ocLogo;
 
 const menuItems = [
-  { title: "Univ", path: "/universities" },
+  { title: "Transcripts", path: "/transcripts" },
+  { title: "Universities", path: "/universities" },
+  { title: "University Courses", path: "/university-courses" },
   { title: "OC Courses", path: "/oc-courses" },
-  { title: "Univ Courses", path: "/university-courses" },
-  { title: "Transcripts", path: "/university-transcripts" },
-  { title: "Transcript Courses", path: "/transcript-courses" },
+  { title: "Semesters", path: "/semesters" },
+  { title: "Catalogs", path: "/catalogs" },
 ];
 
 function isLoggedIn() {
@@ -19,11 +25,16 @@ function isLoggedIn() {
 }
 
 const logout = async () => {
-  try {
-    Utils.removeStore("user");
-    await router.push("/login");
-  } catch (error) {
-    console.error("Logout error:", error);
+  let user = Utils.getStore("user");
+  if (user != null) {
+    await AuthServices.logoutUser(user)
+      .then(() => {
+        Utils.removeItem("user");
+        router.push("/login");
+      })
+      .catch((error) => {
+        console.error("Logout error:", error);
+      });
   }
 };
 </script>
@@ -31,11 +42,12 @@ const logout = async () => {
 <template>
   <v-app>
     <v-app-bar app color="#800000" dark>
-      <router-link to="/" class="text-decoration-none">
+      <router-link :to="{ name: 'Home' }">
         <v-img
-          src="oc-logo-white.png"
-          max-width="40"
-          class="mr-4"
+          class="mx-2"
+          :src="logoURL"
+          height="50"
+          width="50"
           contain
         ></v-img>
       </router-link>
@@ -48,14 +60,28 @@ const logout = async () => {
           :key="item.title"
           :to="item.path"
           text
-          class="mx-2 white--text"
+          class="mx-1 px-2 white--text"
+          density="compact"
         >
           {{ item.title }}
         </v-btn>
-        <v-divider vertical class="mx-2 white"></v-divider>
-        <v-btn @click="logout" text class="white--text">Logout</v-btn>
+        <v-divider vertical class="mx-1 white"></v-divider>
+        <v-btn
+          @click="logout"
+          text
+          class="mx-1 px-2 white--text"
+          density="compact"
+          >Logout</v-btn
+        >
       </template>
-      <v-btn v-else to="/login" text class="white--text">Login</v-btn>
+      <v-btn
+        v-else
+        to="/login"
+        text
+        class="mx-1 px-2 white--text"
+        density="compact"
+        >Login</v-btn
+      >
     </v-app-bar>
 
     <v-main>

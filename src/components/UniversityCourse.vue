@@ -3,12 +3,14 @@ import { ref, computed, onMounted } from "vue";
 import UniversityCourseServices from "../services/universityCourseServices";
 import UniversityServices from "../services/universityServices";
 import OCCourseServices from "../services/ocCourseServices";
+import SemesterServices from "../services/semesterServices";
 
 const dialog = ref(false);
 const loading = ref(false);
 const universityCourses = ref([]);
 const universities = ref([]);
 const ocCourses = ref([]);
+const semesters = ref([]);
 const editedIndex = ref(-1);
 const editedItem = ref({
   universityId: null,
@@ -17,6 +19,7 @@ const editedItem = ref({
   courseDescription: "",
   courseHours: 0,
   OCCourseId: null,
+  semesterId: null,
 });
 const defaultItem = {
   universityId: null,
@@ -25,6 +28,7 @@ const defaultItem = {
   courseDescription: "",
   courseHours: 0,
   OCCourseId: null,
+  semesterId: null,
 };
 
 const headers = [
@@ -34,6 +38,7 @@ const headers = [
   { text: "Course Description", value: "courseDescription" },
   { text: "Course Hours", value: "courseHours" },
   { text: "OC Course", value: "ocCourse.courseName" },
+  { text: "Semester", value: "semester.name" },
   { text: "Actions", value: "actions", sortable: false },
 ];
 
@@ -68,6 +73,14 @@ const initialize = () => {
     })
     .catch((error) => {
       console.error("Error fetching OC courses:", error);
+    });
+
+  SemesterServices.getAll()
+    .then((response) => {
+      semesters.value = response.data;
+    })
+    .catch((error) => {
+      console.error("Error fetching semesters:", error);
     })
     .finally(() => {
       loading.value = false;
@@ -104,18 +117,22 @@ const save = () => {
     // Update
     UniversityCourseServices.update(editedItem.value.id, editedItem.value)
       .then((response) => {
-        // Find the university and OC course data
+        // Find the university, OC course, and semester data
         const university = universities.value.find(
           (u) => u.id === editedItem.value.universityId
         );
         const ocCourse = ocCourses.value.find(
           (c) => c.id === editedItem.value.OCCourseId
         );
+        const semester = semesters.value.find(
+          (s) => s.id === editedItem.value.semesterId
+        );
         // Create a new object with the related data
         const updatedItem = {
           ...response.data,
           university: university,
           ocCourse: ocCourse,
+          semester: semester,
         };
         Object.assign(universityCourses.value[editedIndex.value], updatedItem);
         close();
@@ -127,18 +144,22 @@ const save = () => {
     // Create
     UniversityCourseServices.create(editedItem.value)
       .then((response) => {
-        // Find the university and OC course data
+        // Find the university, OC course, and semester data
         const university = universities.value.find(
           (u) => u.id === editedItem.value.universityId
         );
         const ocCourse = ocCourses.value.find(
           (c) => c.id === editedItem.value.OCCourseId
         );
+        const semester = semesters.value.find(
+          (s) => s.id === editedItem.value.semesterId
+        );
         // Create a new object with the related data
         const newItem = {
           ...response.data,
           university: university,
           ocCourse: ocCourse,
+          semester: semester,
         };
         universityCourses.value.push(newItem);
         close();
@@ -244,6 +265,16 @@ onMounted(() => {
                   item-title="courseName"
                   item-value="id"
                   label="OC Course"
+                ></v-select>
+              </v-col>
+              <v-col cols="12">
+                <v-select
+                  v-model="editedItem.semesterId"
+                  :items="semesters"
+                  item-title="name"
+                  item-value="id"
+                  label="Semester"
+                  required
                 ></v-select>
               </v-col>
             </v-row>

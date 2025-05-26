@@ -1,6 +1,6 @@
 import { createApp } from "vue";
 import App from "./App.vue";
-import router from "./router/router.js";
+import router from "./router/router";
 
 import axios from "axios";
 import "vuetify/styles";
@@ -25,6 +25,5 @@ const vuetify = createVuetify({
 const app = createApp(App);
 
 app.use(router)
-  
    .use(vuetify)
    .mount("#app");
