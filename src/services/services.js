@@ -1,5 +1,5 @@
 import axios from "axios";
-import Utils from "../config/utils.js";
+import Utils from "../utils/utils.js";
 import AuthServices from "./authServices.js";
 import Router from "../router/router.js";
 

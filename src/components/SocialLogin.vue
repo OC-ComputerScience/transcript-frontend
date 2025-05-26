@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import AuthServices from "../services/authServices";
-import Utils from "../config/utils.js";
+import Utils from "../utils/utils.js";
 import { useRouter } from "vue-router";
 
 const router = useRouter();

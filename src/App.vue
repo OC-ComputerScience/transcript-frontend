@@ -1,30 +1,16 @@
 <script setup>
 import { ref, computed } from "vue";
-import { useStore } from "vuex";
 import { useRouter } from "vue-router";
+import Utils from "./utils/utils";
 
-const store = useStore();
 const router = useRouter();
-const drawer = ref(null);
 
 const menuItems = [
-  { title: "Universities", icon: "mdi-school", path: "/universities" },
-  { title: "OC Courses", icon: "mdi-book", path: "/oc-courses" },
-  {
-    title: "University Courses",
-    icon: "mdi-book-open",
-    path: "/university-courses",
-  },
-  {
-    title: "University Transcripts",
-    icon: "mdi-file-document",
-    path: "/university-transcripts",
-  },
-  {
-    title: "Transcript Courses",
-    icon: "mdi-file-document-edit",
-    path: "/transcript-courses",
-  },
+  { title: "Univ", path: "/universities" },
+  { title: "OC Courses", path: "/oc-courses" },
+  { title: "Univ Courses", path: "/university-courses" },
+  { title: "Transcripts", path: "/university-transcripts" },
+  { title: "Transcript Courses", path: "/transcript-courses" },
 ];
 
 function isLoggedIn() {
@@ -33,37 +19,43 @@ function isLoggedIn() {
 }
 
 const logout = async () => {
-  Utils.removeStore("user");
-  router.push("/login");
+  try {
+    Utils.removeStore("user");
+    await router.push("/login");
+  } catch (error) {
+    console.error("Logout error:", error);
+  }
 };
 </script>
 
 <template>
   <v-app>
-    <v-navigation-drawer v-model="drawer" app>
-      <v-list>
-        <v-list-item
+    <v-app-bar app color="#800000" dark>
+      <router-link to="/" class="text-decoration-none">
+        <v-img
+          src="oc-logo-white.png"
+          max-width="40"
+          class="mr-4"
+          contain
+        ></v-img>
+      </router-link>
+      <v-toolbar-title class="white--text">Transcript Eval</v-toolbar-title>
+      <v-spacer></v-spacer>
+
+      <template v-if="isLoggedIn">
+        <v-btn
           v-for="item in menuItems"
           :key="item.title"
           :to="item.path"
-          link
+          text
+          class="mx-2 white--text"
         >
-          <v-list-item-icon>
-            <v-icon>{{ item.icon }}</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>{{ item.title }}</v-list-item-title>
-          </v-list-item-content>
-        </v-list-item>
-      </v-list>
-    </v-navigation-drawer>
-
-    <v-app-bar app>
-      <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-      <v-toolbar-title>Transcript Management System</v-toolbar-title>
-      <v-spacer></v-spacer>
-      <v-btn v-if="!isLoggedIn" to="/login" text>Login</v-btn>
-      <v-btn v-else @click="logout" text>Logout</v-btn>
+          {{ item.title }}
+        </v-btn>
+        <v-divider vertical class="mx-2 white"></v-divider>
+        <v-btn @click="logout" text class="white--text">Logout</v-btn>
+      </template>
+      <v-btn v-else to="/login" text class="white--text">Login</v-btn>
     </v-app-bar>
 
     <v-main>

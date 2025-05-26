@@ -6,7 +6,6 @@ import OCCourse from '../components/OCCourse.vue';
 import UniversityCourse from '../components/UniversityCourse.vue';
 import UniversityTranscript from '../components/UniversityTranscript.vue';
 import TranscriptCourse from '../components/TranscriptCourse.vue';
-import store from '../store/store.js';
 
 const routes = [
   {
