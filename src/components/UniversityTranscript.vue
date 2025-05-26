@@ -17,17 +17,20 @@ const universities = ref([]);
 const editedIndex = ref(-1);
 const editedItem = ref({
   OCIdNumber: "",
+  name: "",
   universityId: null,
   official: false,
 });
 const defaultItem = {
   OCIdNumber: "",
+  name: "",
   universityId: null,
   official: false,
 };
 
 const headers = [
   { title: "OC ID Number", key: "OCIdNumber" },
+  { title: "Student Name", key: "name" },
   { title: "University", key: "university.name" },
   { title: "Official", key: "official" },
   { title: "PDF", key: "pdf" },
@@ -247,6 +250,13 @@ onMounted(() => {
                 <v-text-field
                   v-model="editedItem.OCIdNumber"
                   label="OC ID Number"
+                  required
+                ></v-text-field>
+              </v-col>
+              <v-col cols="12">
+                <v-text-field
+                  v-model="editedItem.name"
+                  label="Student Name"
                   required
                 ></v-text-field>
               </v-col>
