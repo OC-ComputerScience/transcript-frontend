@@ -1,3 +1,143 @@
+<script setup>
+import { ref, computed, onMounted } from "vue";
+import UniversityTranscriptServices from "../services/universityTranscriptServices";
+import UniversityServices from "../services/universityServices";
+
+const dialog = ref(false);
+const loading = ref(false);
+const universityTranscripts = ref([]);
+const universities = ref([]);
+const editedIndex = ref(-1);
+const editedItem = ref({
+  OCIdNumber: "",
+  universityId: null,
+  official: false,
+});
+const defaultItem = {
+  OCIdNumber: "",
+  universityId: null,
+  official: false,
+};
+
+const headers = [
+  { title: "OC ID Number", key: "OCIdNumber" },
+  { title: "University", key: "university.name" },
+  { title: "Official", key: "official" },
+  { title: "Actions", key: "actions", sortable: false },
+];
+
+const formTitle = computed(() => {
+  return editedIndex.value === -1
+    ? "New University Transcript"
+    : "Edit University Transcript";
+});
+
+const initialize = () => {
+  loading.value = true;
+
+  UniversityTranscriptServices.getAll()
+    .then((responce) => {
+      universityTranscripts.value = responce.data;
+    })
+    .catch((error) => {
+      console.log("Error reading University Transcripts");
+    });
+
+  UniversityServices.getAll()
+    .then((responce) => {
+      universities.value = responce.data;
+    })
+    .catch((error) => {
+      console.log("Error reading Universitis");
+    });
+
+  loading.value = false;
+};
+
+const editItem = (item) => {
+  editedIndex.value = universityTranscripts.value.indexOf(item);
+  editedItem.value = Object.assign({}, item);
+  dialog.value = true;
+};
+
+const deleteItem = async (item) => {
+  const index = universityTranscripts.value.indexOf(item);
+  if (confirm("Are you sure you want to delete this university transcript?")) {
+    await UniversityTranscriptServices.delete(item.id)
+      .then((response) => {
+        universityTranscripts.value.splice(index, 1);
+      })
+      .catch((error) => {
+        console.error("Error deleting university transcript:", error);
+      });
+  }
+};
+
+const close = () => {
+  dialog.value = false;
+  editedItem.value = Object.assign({}, defaultItem);
+  editedIndex.value = -1;
+};
+
+const save = async () => {
+  if (editedIndex.value > -1) {
+    // Update
+    await UniversityTranscriptServices.update(
+      editedItem.value.id,
+      editedItem.value
+    )
+      .then((response) => {
+        // Find the university data
+        const university = universities.value.find(
+          (u) => u.id === editedItem.value.universityId
+        );
+        // Create a new object with the university data
+        const updatedItem = {
+          ...response.data,
+          university: university,
+        };
+        Object.assign(
+          universityTranscripts.value[editedIndex.value],
+          updatedItem
+        );
+        close();
+      })
+      .catch((error) => {
+        console.error("Error updating university transcript:", error);
+      });
+  } else {
+    // Create
+    await UniversityTranscriptServices.create(editedItem.value)
+      .then((response) => {
+        // Find the university data
+        const university = universities.value.find(
+          (u) => u.id === editedItem.value.universityId
+        );
+        // Create a new object with the university data
+        const newItem = {
+          ...response.data,
+          university: university,
+        };
+        universityTranscripts.value.push(newItem);
+        close();
+      })
+      .catch((error) => {
+        console.error("Error creating university transcript:", error);
+      });
+  }
+};
+
+const openDialog = () => {
+  editedItem.value = Object.assign({}, defaultItem);
+  editedIndex.value = -1;
+  dialog.value = true;
+};
+
+onMounted(() => {
+  initialize();
+});
+</script>
+
 <template>
   <v-container>
     <v-row>
@@ -52,7 +192,7 @@
                 <v-select
                   v-model="editedItem.universityId"
                   :items="universities"
-                  item-text="name"
+                  item-title="name"
                   item-value="id"
                   label="University"
                   required
@@ -77,123 +217,3 @@
     </v-dialog>
   </v-container>
 </template>
-
-<script>
-import axios from "axios";
-
-export default {
-  name: "UniversityTranscript",
-  data: () => ({
-    dialog: false,
-    loading: false,
-    headers: [
-      { text: "OC ID Number", value: "OCIdNumber" },
-      { text: "University", value: "university.name" },
-      { text: "Official", value: "official" },
-      { text: "Actions", value: "actions", sortable: false },
-    ],
-    universityTranscripts: [],
-    universities: [],
-    editedIndex: -1,
-    editedItem: {
-      OCIdNumber: "",
-      universityId: null,
-      official: false,
-    },
-    defaultItem: {
-      OCIdNumber: "",
-      universityId: null,
-      official: false,
-    },
-  }),
-
-  computed: {
-    formTitle() {
-      return this.editedIndex === -1
-        ? "New University Transcript"
-        : "Edit University Transcript";
-    },
-  },
-
-  created() {
-    this.initialize();
-  },
-
-  methods: {
-    async initialize() {
-      this.loading = true;
-      try {
-        const [transcriptsRes, universitiesRes] = await Promise.all([
-          axios.get("/api/university-transcripts"),
-          axios.get("/api/universities"),
-        ]);
-        this.universityTranscripts = transcriptsRes.data;
-        this.universities = universitiesRes.data;
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-      this.loading = false;
-    },
-
-    editItem(item) {
-      this.editedIndex = this.universityTranscripts.indexOf(item);
-      this.editedItem = Object.assign({}, item);
-      this.dialog = true;
-    },
-
-    async deleteItem(item) {
-      const index = this.universityTranscripts.indexOf(item);
-      if (
-        confirm("Are you sure you want to delete this university transcript?")
-      ) {
-        try {
-          await axios.delete(`/api/university-transcripts/${item.id}`);
-          this.universityTranscripts.splice(index, 1);
-        } catch (error) {
-          console.error("Error deleting university transcript:", error);
-        }
-      }
-    },
-
-    close() {
-      this.dialog = false;
-      this.$nextTick(() => {
-        this.editedItem = Object.assign({}, this.defaultItem);
-        this.editedIndex = -1;
-      });
-    },
-
-    async save() {
-      try {
-        if (this.editedIndex > -1) {
-          // Update
-          const response = await axios.put(
-            `/api/university-transcripts/${this.editedItem.id}`,
-            this.editedItem
-          );
-          Object.assign(
-            this.universityTranscripts[this.editedIndex],
-            response.data
-          );
-        } else {
-          // Create
-          const response = await axios.post(
-            "/api/university-transcripts",
-            this.editedItem
-          );
-          this.universityTranscripts.push(response.data);
-        }
-        this.close();
-      } catch (error) {
-        console.error("Error saving university transcript:", error);
-      }
-    },
-
-    openDialog() {
-      this.editedItem = Object.assign({}, this.defaultItem);
-      this.editedIndex = -1;
-      this.dialog = true;
-    },
-  },
-};
-</script>

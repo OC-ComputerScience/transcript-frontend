@@ -1,3 +1,107 @@
+<script setup>
+import { ref, computed, onMounted } from "vue";
+import OCCourseServices from "../services/ocCourseServices";
+
+const dialog = ref(false);
+const loading = ref(false);
+const ocCourses = ref([]);
+const editedIndex = ref(-1);
+const editedItem = ref({
+  courseNumber: "",
+  courseName: "",
+  courseDescription: "",
+  courseHours: 0,
+});
+const defaultItem = {
+  courseNumber: "",
+  courseName: "",
+  courseDescription: "",
+  courseHours: 0,
+};
+
+const headers = [
+  { text: "Course Number", value: "courseNumber" },
+  { text: "Course Name", value: "courseName" },
+  { text: "Course Description", value: "courseDescription" },
+  { text: "Course Hours", value: "courseHours" },
+  { text: "Actions", value: "actions", sortable: false },
+];
+
+const formTitle = computed(() => {
+  return editedIndex.value === -1 ? "New OC Course" : "Edit OC Course";
+});
+
+const initialize = async () => {
+  loading.value = true;
+  await OCCourseServices.getAll()
+    .then((response) => {
+      ocCourses.value = response.data;
+    })
+    .catch((error) => {
+      console.error("Error fetching OC courses:", error);
+    });
+  loading.value = false;
+};
+
+const editItem = (item) => {
+  editedIndex.value = ocCourses.value.indexOf(item);
+  editedItem.value = Object.assign({}, item);
+  dialog.value = true;
+};
+
+const deleteItem = async (item) => {
+  const index = ocCourses.value.indexOf(item);
+  if (confirm("Are you sure you want to delete this OC course?")) {
+    await OCCourseServices.delete(editedItem.value.id)
+      .then((response) => {
+        ocCourses.value.splice(index, 1);
+      })
+      .catch((error) => {
+        console.error("Error deleting OC course:", error);
+      });
+  }
+};
+
+const close = () => {
+  dialog.value = false;
+  editedItem.value = Object.assign({}, defaultItem);
+  editedIndex.value = -1;
+};
+
+const save = async () => {
+  if (editedIndex.value > -1) {
+    // Update
+    await OCCourseServices.update(editedItem.value.id, editedItem.value)
+      .then((response) => {
+        Object.assign(ocCourses.value[editedIndex.value], response.data);
+      })
+      .catch((error) => {
+        console.error("Error saving OC course:", error);
+      });
+  } else {
+    // Create
+    const response = await OCCourseServices.create(editedItem.value)
+      .then((response) => {
+        ocCourses.value.push(response.data);
+      })
+      .catch((error) => {
+        console.error("Error creating OC course:", error);
+      });
+  }
+  close();
+};
+
+const openDialog = () => {
+  editedItem.value = Object.assign({}, defaultItem);
+  editedIndex.value = -1;
+  dialog.value = true;
+};
+
+onMounted(() => {
+  initialize();
+});
+</script>
+
 <template>
   <v-container>
     <v-row>
@@ -76,111 +180,3 @@
     </v-dialog>
   </v-container>
 </template>
-
-<script>
-import axios from "axios";
-
-export default {
-  name: "OCCourse",
-  data: () => ({
-    dialog: false,
-    loading: false,
-    headers: [
-      { text: "Course Number", value: "courseNumber" },
-      { text: "Course Name", value: "courseName" },
-      { text: "Course Description", value: "courseDescription" },
-      { text: "Course Hours", value: "courseHours" },
-      { text: "Actions", value: "actions", sortable: false },
-    ],
-    ocCourses: [],
-    editedIndex: -1,
-    editedItem: {
-      courseNumber: "",
-      courseName: "",
-      courseDescription: "",
-      courseHours: 0,
-    },
-    defaultItem: {
-      courseNumber: "",
-      courseName: "",
-      courseDescription: "",
-      courseHours: 0,
-    },
-  }),
-
-  computed: {
-    formTitle() {
-      return this.editedIndex === -1 ? "New OC Course" : "Edit OC Course";
-    },
-  },
-
-  created() {
-    this.initialize();
-  },
-
-  methods: {
-    async initialize() {
-      this.loading = true;
-      try {
-        const response = await axios.get("/api/oc-courses");
-        this.ocCourses = response.data;
-      } catch (error) {
-        console.error("Error fetching OC courses:", error);
-      }
-      this.loading = false;
-    },
-
-    editItem(item) {
-      this.editedIndex = this.ocCourses.indexOf(item);
-      this.editedItem = Object.assign({}, item);
-      this.dialog = true;
-    },
-
-    async deleteItem(item) {
-      const index = this.ocCourses.indexOf(item);
-      if (confirm("Are you sure you want to delete this OC course?")) {
-        try {
-          await axios.delete(`/api/oc-courses/${item.id}`);
-          this.ocCourses.splice(index, 1);
-        } catch (error) {
-          console.error("Error deleting OC course:", error);
-        }
-      }
-    },
-
-    close() {
-      this.dialog = false;
-      this.$nextTick(() => {
-        this.editedItem = Object.assign({}, this.defaultItem);
-        this.editedIndex = -1;
-      });
-    },
-
-    async save() {
-      try {
-        if (this.editedIndex > -1) {
-          // Update
-          const response = await axios.put(
-            `/api/oc-courses/${this.editedItem.id}`,
-            this.editedItem
-          );
-          Object.assign(this.ocCourses[this.editedIndex], response.data);
-        } else {
-          // Create
-          const response = await axios.post("/api/oc-courses", this.editedItem);
-          this.ocCourses.push(response.data);
-        }
-        this.close();
-      } catch (error) {
-        console.error("Error saving OC course:", error);
-      }
-    },
-
-    openDialog() {
-      this.editedItem = Object.assign({}, this.defaultItem);
-      this.editedIndex = -1;
-      this.dialog = true;
-    },
-  },
-};
-</script>

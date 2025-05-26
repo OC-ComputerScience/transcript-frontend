@@ -29,42 +29,37 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "Home",
-  data: () => ({
-    menuItems: [
-      {
-        title: "Universities",
-        icon: "mdi-school",
-        path: "/universities",
-        description: "Manage university information and details",
-      },
-      {
-        title: "OC Courses",
-        icon: "mdi-book",
-        path: "/oc-courses",
-        description: "Manage OC course catalog and details",
-      },
-      {
-        title: "University Courses",
-        icon: "mdi-book-open",
-        path: "/university-courses",
-        description: "Manage university course mappings and equivalencies",
-      },
-      {
-        title: "University Transcripts",
-        icon: "mdi-file-document",
-        path: "/university-transcripts",
-        description: "Manage university transcripts and their status",
-      },
-      {
-        title: "Transcript Courses",
-        icon: "mdi-file-document-edit",
-        path: "/transcript-courses",
-        description: "Manage individual courses within transcripts",
-      },
-    ],
-  }),
-};
+<script setup>
+const menuItems = [
+  {
+    title: "Universities",
+    icon: "mdi-school",
+    path: "/universities",
+    description: "Manage university information and details",
+  },
+  {
+    title: "OC Courses",
+    icon: "mdi-book",
+    path: "/oc-courses",
+    description: "Manage OC course catalog and details",
+  },
+  {
+    title: "University Courses",
+    icon: "mdi-book-open",
+    path: "/university-courses",
+    description: "Manage university course mappings and equivalencies",
+  },
+  {
+    title: "University Transcripts",
+    icon: "mdi-file-document",
+    path: "/university-transcripts",
+    description: "Manage university transcripts and their status",
+  },
+  {
+    title: "Transcript Courses",
+    icon: "mdi-file-document-edit",
+    path: "/transcript-courses",
+    description: "Manage individual courses within transcripts",
+  },
+];
 </script>

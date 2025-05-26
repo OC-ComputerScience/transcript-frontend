@@ -1,7 +1,7 @@
 import { createApp } from "vue";
 import App from "./App.vue";
-import router from "./router.js";
-import store from "./store";
+import router from "./router/router.js";
+import store from "./store/store.js";
 import axios from "axios";
 import "vuetify/styles";
 import { createVuetify } from "vuetify";

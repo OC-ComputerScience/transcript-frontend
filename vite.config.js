@@ -18,5 +18,7 @@ export default () => {
     },
 
     base: baseURL,
+
   });
 };
+

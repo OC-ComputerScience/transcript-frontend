@@ -1,41 +1,40 @@
-<script>
-export default {
-  name: "App",
-  data: () => ({
-    drawer: null,
-    menuItems: [
-      { title: "Universities", icon: "mdi-school", path: "/universities" },
-      { title: "OC Courses", icon: "mdi-book", path: "/oc-courses" },
-      {
-        title: "University Courses",
-        icon: "mdi-book-open",
-        path: "/university-courses",
-      },
-      {
-        title: "University Transcripts",
-        icon: "mdi-file-document",
-        path: "/university-transcripts",
-      },
-      {
-        title: "Transcript Courses",
-        icon: "mdi-file-document-edit",
-        path: "/transcript-courses",
-      },
-    ],
-  }),
+<script setup>
+import { ref, computed } from "vue";
+import { useStore } from "vuex";
+import { useRouter } from "vue-router";
 
-  computed: {
-    isLoggedIn() {
-      return this.$store.state.auth.status.loggedIn;
-    },
-  },
+const store = useStore();
+const router = useRouter();
+const drawer = ref(null);
 
-  methods: {
-    async logout() {
-      await this.$store.dispatch("auth/logout");
-      this.$router.push("/login");
-    },
+const menuItems = [
+  { title: "Universities", icon: "mdi-school", path: "/universities" },
+  { title: "OC Courses", icon: "mdi-book", path: "/oc-courses" },
+  {
+    title: "University Courses",
+    icon: "mdi-book-open",
+    path: "/university-courses",
   },
+  {
+    title: "University Transcripts",
+    icon: "mdi-file-document",
+    path: "/university-transcripts",
+  },
+  {
+    title: "Transcript Courses",
+    icon: "mdi-file-document-edit",
+    path: "/transcript-courses",
+  },
+];
+
+function isLoggedIn() {
+  let loggedIn = Utils.getStore("user") != null ? true : false;
+  return loggedIn;
+}
+
+const logout = async () => {
+  Utils.removeStore("user");
+  router.push("/login");
 };
 </script>
 

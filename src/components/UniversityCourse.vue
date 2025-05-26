@@ -1,3 +1,165 @@
+<script setup>
+import { ref, computed, onMounted } from "vue";
+import UniversityCourseServices from "../services/universityCourseServices";
+import UniversityServices from "../services/universityServices";
+import OCCourseServices from "../services/ocCourseServices";
+
+const dialog = ref(false);
+const loading = ref(false);
+const universityCourses = ref([]);
+const universities = ref([]);
+const ocCourses = ref([]);
+const editedIndex = ref(-1);
+const editedItem = ref({
+  universityId: null,
+  courseNumber: "",
+  courseName: "",
+  courseDescription: "",
+  courseHours: 0,
+  OCCourseId: null,
+});
+const defaultItem = {
+  universityId: null,
+  courseNumber: "",
+  courseName: "",
+  courseDescription: "",
+  courseHours: 0,
+  OCCourseId: null,
+};
+
+const headers = [
+  { text: "University", value: "university.name" },
+  { text: "Course Number", value: "courseNumber" },
+  { text: "Course Name", value: "courseName" },
+  { text: "Course Description", value: "courseDescription" },
+  { text: "Course Hours", value: "courseHours" },
+  { text: "OC Course", value: "ocCourse.courseName" },
+  { text: "Actions", value: "actions", sortable: false },
+];
+
+const formTitle = computed(() => {
+  return editedIndex.value === -1
+    ? "New University Course"
+    : "Edit University Course";
+});
+
+const initialize = () => {
+  loading.value = true;
+
+  UniversityCourseServices.getAll()
+    .then((response) => {
+      universityCourses.value = response.data;
+    })
+    .catch((error) => {
+      console.error("Error fetching university courses:", error);
+    });
+
+  UniversityServices.getAll()
+    .then((response) => {
+      universities.value = response.data;
+    })
+    .catch((error) => {
+      console.error("Error fetching universities:", error);
+    });
+
+  OCCourseServices.getAll()
+    .then((response) => {
+      ocCourses.value = response.data;
+    })
+    .catch((error) => {
+      console.error("Error fetching OC courses:", error);
+    })
+    .finally(() => {
+      loading.value = false;
+    });
+};
+
+const editItem = (item) => {
+  editedIndex.value = universityCourses.value.indexOf(item);
+  editedItem.value = Object.assign({}, item);
+  dialog.value = true;
+};
+
+const deleteItem = (item) => {
+  const index = universityCourses.value.indexOf(item);
+  if (confirm("Are you sure you want to delete this university course?")) {
+    UniversityCourseServices.delete(item.id)
+      .then((response) => {
+        universityCourses.value.splice(index, 1);
+      })
+      .catch((error) => {
+        console.error("Error deleting university course:", error);
+      });
+  }
+};
+
+const close = () => {
+  dialog.value = false;
+  editedItem.value = Object.assign({}, defaultItem);
+  editedIndex.value = -1;
+};
+
+const save = () => {
+  if (editedIndex.value > -1) {
+    // Update
+    UniversityCourseServices.update(editedItem.value.id, editedItem.value)
+      .then((response) => {
+        // Find the university and OC course data
+        const university = universities.value.find(
+          (u) => u.id === editedItem.value.universityId
+        );
+        const ocCourse = ocCourses.value.find(
+          (c) => c.id === editedItem.value.OCCourseId
+        );
+        // Create a new object with the related data
+        const updatedItem = {
+          ...response.data,
+          university: university,
+          ocCourse: ocCourse,
+        };
+        Object.assign(universityCourses.value[editedIndex.value], updatedItem);
+        close();
+      })
+      .catch((error) => {
+        console.error("Error updating university course:", error);
+      });
+  } else {
+    // Create
+    UniversityCourseServices.create(editedItem.value)
+      .then((response) => {
+        // Find the university and OC course data
+        const university = universities.value.find(
+          (u) => u.id === editedItem.value.universityId
+        );
+        const ocCourse = ocCourses.value.find(
+          (c) => c.id === editedItem.value.OCCourseId
+        );
+        // Create a new object with the related data
+        const newItem = {
+          ...response.data,
+          university: university,
+          ocCourse: ocCourse,
+        };
+        universityCourses.value.push(newItem);
+        close();
+      })
+      .catch((error) => {
+        console.error("Error creating university course:", error);
+      });
+  }
+};
+
+const openDialog = () => {
+  editedItem.value = Object.assign({}, defaultItem);
+  editedIndex.value = -1;
+  dialog.value = true;
+};
+
+onMounted(() => {
+  initialize();
+});
+</script>
+
 <template>
   <v-container>
     <v-row>
@@ -40,7 +202,7 @@
                 <v-select
                   v-model="editedItem.universityId"
                   :items="universities"
-                  item-text="name"
+                  item-title="name"
                   item-value="id"
                   label="University"
                   required
@@ -79,7 +241,7 @@
                 <v-select
                   v-model="editedItem.OCCourseId"
                   :items="ocCourses"
-                  item-text="courseName"
+                  item-title="courseName"
                   item-value="id"
                   label="OC Course"
                 ></v-select>
@@ -97,134 +259,3 @@
     </v-dialog>
   </v-container>
 </template>
-
-<script>
-import axios from "axios";
-
-export default {
-  name: "UniversityCourse",
-  data: () => ({
-    dialog: false,
-    loading: false,
-    headers: [
-      { text: "University", value: "university.name" },
-      { text: "Course Number", value: "courseNumber" },
-      { text: "Course Name", value: "courseName" },
-      { text: "Course Description", value: "courseDescription" },
-      { text: "Course Hours", value: "courseHours" },
-      { text: "OC Course", value: "ocCourse.courseName" },
-      { text: "Actions", value: "actions", sortable: false },
-    ],
-    universityCourses: [],
-    universities: [],
-    ocCourses: [],
-    editedIndex: -1,
-    editedItem: {
-      universityId: null,
-      courseNumber: "",
-      courseName: "",
-      courseDescription: "",
-      courseHours: 0,
-      OCCourseId: null,
-    },
-    defaultItem: {
-      universityId: null,
-      courseNumber: "",
-      courseName: "",
-      courseDescription: "",
-      courseHours: 0,
-      OCCourseId: null,
-    },
-  }),
-
-  computed: {
-    formTitle() {
-      return this.editedIndex === -1
-        ? "New University Course"
-        : "Edit University Course";
-    },
-  },
-
-  created() {
-    this.initialize();
-  },
-
-  methods: {
-    async initialize() {
-      this.loading = true;
-      try {
-        const [universityCoursesRes, universitiesRes, ocCoursesRes] =
-          await Promise.all([
-            axios.get("/api/university-courses"),
-            axios.get("/api/universities"),
-            axios.get("/api/oc-courses"),
-          ]);
-        this.universityCourses = universityCoursesRes.data;
-        this.universities = universitiesRes.data;
-        this.ocCourses = ocCoursesRes.data;
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-      this.loading = false;
-    },
-
-    editItem(item) {
-      this.editedIndex = this.universityCourses.indexOf(item);
-      this.editedItem = Object.assign({}, item);
-      this.dialog = true;
-    },
-
-    async deleteItem(item) {
-      const index = this.universityCourses.indexOf(item);
-      if (confirm("Are you sure you want to delete this university course?")) {
-        try {
-          await axios.delete(`/api/university-courses/${item.id}`);
-          this.universityCourses.splice(index, 1);
-        } catch (error) {
-          console.error("Error deleting university course:", error);
-        }
-      }
-    },
-
-    close() {
-      this.dialog = false;
-      this.$nextTick(() => {
-        this.editedItem = Object.assign({}, this.defaultItem);
-        this.editedIndex = -1;
-      });
-    },
-
-    async save() {
-      try {
-        if (this.editedIndex > -1) {
-          // Update
-          const response = await axios.put(
-            `/api/university-courses/${this.editedItem.id}`,
-            this.editedItem
-          );
-          Object.assign(
-            this.universityCourses[this.editedIndex],
-            response.data
-          );
-        } else {
-          // Create
-          const response = await axios.post(
-            "/api/university-courses",
-            this.editedItem
-          );
-          this.universityCourses.push(response.data);
-        }
-        this.close();
-      } catch (error) {
-        console.error("Error saving university course:", error);
-      }
-    },
-
-    openDialog() {
-      this.editedItem = Object.assign({}, this.defaultItem);
-      this.editedIndex = -1;
-      this.dialog = true;
-    },
-  },
-};
-</script>

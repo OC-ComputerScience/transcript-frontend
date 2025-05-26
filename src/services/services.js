@@ -1,13 +1,13 @@
 import axios from "axios";
 import Utils from "../config/utils.js";
 import AuthServices from "./authServices.js";
-import Router from "../router.js";
+import Router from "../router/router.js";
 
 var baseurl = "";
 if (import.meta.env.DEV) {
-  baseurl = "http://localhost/tutorial/";
+  baseurl = "http://localhost:3100/transcript/";
 } else {
-  baseurl = "/tutorial/";
+  baseurl = "/transcript/";
 }
 
 const apiClient = axios.create({
@@ -31,9 +31,7 @@ const apiClient = axios.create({
   },
   transformResponse: function (data) {
     data = JSON.parse(data);
-    // if (!data.success && data.code == "expired-session") {
-    //   localStorage.deleteItem("user");
-    // }
+
     if (data.message !== undefined && data.message.includes("Unauthorized")) {
       AuthServices.logoutUser(Utils.getStore("user"))
         .then((response) => {
@@ -44,9 +42,8 @@ const apiClient = axios.create({
         .catch((error) => {
           console.log("error", error);
         });
-      // Utils.removeItem("user")
     }
-    // console.log(Utils.getStore("user"))
+
     return data;
   },
 });

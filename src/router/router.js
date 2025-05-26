@@ -6,7 +6,7 @@ import OCCourse from '../components/OCCourse.vue';
 import UniversityCourse from '../components/UniversityCourse.vue';
 import UniversityTranscript from '../components/UniversityTranscript.vue';
 import TranscriptCourse from '../components/TranscriptCourse.vue';
-import store from '../store';
+import store from '../store/store.js';
 
 const routes = [
   {
@@ -53,23 +53,8 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory('/'),
   routes
-});
-
-router.beforeEach((to, from, next) => {
-  if (to.matched.some(record => record.meta.requiresAuth)) {
-    if (!store.state.auth.status.loggedIn) {
-      next({
-        path: '/login',
-        query: { redirect: to.fullPath }
-      });
-    } else {
-      next();
-    }
-  } else {
-    next();
-  }
 });
 
 export default router; 

@@ -1,3 +1,113 @@
+<script setup>
+import { ref, computed, onMounted } from "vue";
+import UniversityServices from "../services/universityServices";
+
+const dialog = ref(false);
+const loading = ref(false);
+const universities = ref([]);
+const editedIndex = ref(-1);
+const editedItem = ref({
+  name: "",
+  city: "",
+  state: "",
+  country: "",
+});
+const defaultItem = {
+  name: "",
+  city: "",
+  state: "",
+  country: "",
+};
+
+const headers = [
+  { text: "Name", value: "name" },
+  { text: "City", value: "city" },
+  { text: "State", value: "state" },
+  { text: "Country", value: "country" },
+  { text: "Actions", value: "actions", sortable: false },
+];
+
+const formTitle = computed(() => {
+  return editedIndex.value === -1 ? "New University" : "Edit University";
+});
+
+async function initialize() {
+  loading.value = true;
+
+  const response = await UniversityServices.getAll()
+    .then((response) => {
+      universities.value = response.data;
+    })
+    .catch((error) => {
+      console.error("Error fetching universities:", error);
+    });
+
+  loading.value = false;
+}
+
+function editItem(item) {
+  editedIndex.value = universities.value.indexOf(item);
+  editedItem.value = Object.assign({}, item);
+  dialog.value = true;
+}
+
+async function deleteItem(item) {
+  const index = universities.value.indexOf(item);
+  if (confirm("Are you sure you want to delete this university?")) {
+    await UniversityServices.delete(item.id)
+      .then((response) => {
+        universities.value.splice(index, 1);
+      })
+      .catch((error) => {
+        console.error("Error deleting university:", error);
+      });
+  }
+}
+
+function close() {
+  dialog.value = false;
+  editedItem.value = Object.assign({}, defaultItem);
+  editedIndex.value = -1;
+}
+
+async function save() {
+  if (editedIndex.value > -1) {
+    // Update
+    await UniversityServices.update(editedItem.value.id, editedItem.value)
+      .then((response) => {
+        universities.value[editedIndex.value] = Object.assign(
+          {},
+          editedItem.value
+        );
+        close();
+      })
+      .catch((error) => {
+        console.error("Error editing university:", error);
+      });
+  } else {
+    // Create
+    const response = await UniversityServices.create(editedItem.value)
+      .then((resonse) => {
+        universities.value.push(response.data);
+        close();
+      })
+      .catch((error) => {
+        console.error("Error saving university: ", error);
+      });
+  }
+}
+
+function openDialog() {
+  editedItem.value = Object.assign({}, defaultItem);
+  editedIndex.value = -1;
+  dialog.value = true;
+}
+
+onMounted(() => {
+  initialize();
+});
+</script>
+
 <template>
   <v-container>
     <v-row>
@@ -75,114 +185,3 @@
     </v-dialog>
   </v-container>
 </template>
-
-<script>
-import axios from "axios";
-
-export default {
-  name: "University",
-  data: () => ({
-    dialog: false,
-    loading: false,
-    headers: [
-      { text: "Name", value: "name" },
-      { text: "City", value: "city" },
-      { text: "State", value: "state" },
-      { text: "Country", value: "country" },
-      { text: "Actions", value: "actions", sortable: false },
-    ],
-    universities: [],
-    editedIndex: -1,
-    editedItem: {
-      name: "",
-      city: "",
-      state: "",
-      country: "",
-    },
-    defaultItem: {
-      name: "",
-      city: "",
-      state: "",
-      country: "",
-    },
-  }),
-
-  computed: {
-    formTitle() {
-      return this.editedIndex === -1 ? "New University" : "Edit University";
-    },
-  },
-
-  created() {
-    this.initialize();
-  },
-
-  methods: {
-    async initialize() {
-      this.loading = true;
-      try {
-        const response = await axios.get("/api/universities");
-        this.universities = response.data;
-      } catch (error) {
-        console.error("Error fetching universities:", error);
-      }
-      this.loading = false;
-    },
-
-    editItem(item) {
-      this.editedIndex = this.universities.indexOf(item);
-      this.editedItem = Object.assign({}, item);
-      this.dialog = true;
-    },
-
-    async deleteItem(item) {
-      const index = this.universities.indexOf(item);
-      if (confirm("Are you sure you want to delete this university?")) {
-        try {
-          await axios.delete(`/api/universities/${item.id}`);
-          this.universities.splice(index, 1);
-        } catch (error) {
-          console.error("Error deleting university:", error);
-        }
-      }
-    },
-
-    close() {
-      this.dialog = false;
-      this.$nextTick(() => {
-        this.editedItem = Object.assign({}, this.defaultItem);
-        this.editedIndex = -1;
-      });
-    },
-
-    async save() {
-      try {
-        if (this.editedIndex > -1) {
-          // Update
-          const response = await axios.put(
-            `/api/universities/${this.editedItem.id}`,
-            this.editedItem
-          );
-          Object.assign(this.universities[this.editedIndex], response.data);
-        } else {
-          // Create
-          const response = await axios.post(
-            "/api/universities",
-            this.editedItem
-          );
-          this.universities.push(response.data);
-        }
-        this.close();
-      } catch (error) {
-        console.error("Error saving university:", error);
-      }
-    },
-
-    openDialog() {
-      this.editedItem = Object.assign({}, this.defaultItem);
-      this.editedIndex = -1;
-      this.dialog = true;
-    },
-  },
-};
-</script>
