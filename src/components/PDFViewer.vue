@@ -10,11 +10,16 @@ console.log(props.path);
 const emit = defineEmits(["update:modelValue"]);
 
 const dialog = ref(props.modelValue);
+const pdfError = ref(false);
 
 watch(
   () => props.modelValue,
   (newValue) => {
     dialog.value = newValue;
+    if (newValue) {
+      console.log("Opening PDF at path:", props.path);
+      pdfError.value = false;
+    }
   }
 );
 
@@ -28,6 +33,11 @@ const close = () => {
 
 const openInNewTab = () => {
   window.open(props.path, "_blank");
+};
+
+const handlePdfError = () => {
+  console.error("Error loading PDF:", props.path);
+  pdfError.value = true;
 };
 </script>
 
@@ -46,11 +56,19 @@ const openInNewTab = () => {
         </v-btn>
       </v-toolbar>
       <v-card-text class="pa-0">
+        <div v-if="pdfError" class="text-center pa-4">
+          <p class="text-h6">Unable to display PDF file.</p>
+          <v-btn color="primary" @click="openInNewTab" class="mt-2">
+            Open PDF in New Tab
+          </v-btn>
+        </div>
         <iframe
+          v-else
           :src="path"
           width="100%"
           height="100%"
           style="border: none; min-height: 80vh"
+          @error="handlePdfError"
         ></iframe>
       </v-card-text>
     </v-card>

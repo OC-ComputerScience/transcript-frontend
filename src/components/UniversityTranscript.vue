@@ -171,7 +171,10 @@ const uploadFile = async () => {
 };
 
 const viewPdf = (item) => {
-  currentPdfUrl.value = `/transcripts/transcript-backend/data/transcripts/transcript-${item.id}.pdf`;
+  const timestamp = new Date().getTime();
+  const random = Math.random().toString(36).substring(7);
+  currentPdfUrl.value = `http://localhost:3100/transcript/pdf/${item.id}?t=${timestamp}&r=${random}`;
+  console.log("Attempting to view PDF at URL:", currentPdfUrl.value);
   pdfDialog.value = true;
 };
 

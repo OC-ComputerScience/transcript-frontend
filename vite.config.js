@@ -16,8 +16,8 @@ export default () => {
       host: "localhost",
       port: 8081,
       proxy: {
-        '/transcripts': {
-          target: 'http://localhost',
+        '/transcript': {
+          target: 'http://localhost:3100',
           changeOrigin: true,
           secure: false
         }
