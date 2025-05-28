@@ -27,6 +27,8 @@ const defaultItem = {
   universityId: null,
   official: false,
 };
+const fileInput = ref(null);
+const isDragging = ref(false);
 
 const headers = [
   { title: "OC ID Number", key: "OCIdNumber" },
@@ -175,6 +177,41 @@ const viewPdf = (item) => {
   pdfDialog.value = true;
 };
 
+const triggerFileInput = () => {
+  fileInput.value.click();
+};
+
+const handleDrop = (event) => {
+  isDragging.value = false;
+  const file = event.dataTransfer.files[0];
+  if (file && file.type === "application/pdf") {
+    selectedFile.value = file;
+  } else {
+    alert("Please drop a PDF file");
+  }
+};
+
+const clearFile = () => {
+  selectedFile.value = null;
+  if (fileInput.value) {
+    fileInput.value.value = "";
+  }
+};
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+const closeUploadDialog = () => {
+  uploadDialog.value = false;
+  selectedFile.value = null;
+  isDragging.value = false;
+};
+
 onMounted(() => {
   initialize();
 });
@@ -299,13 +336,63 @@ onMounted(() => {
           <v-container>
             <v-row>
               <v-col cols="12">
-                <v-file-input
-                  v-model="selectedFile"
+                <!-- Drag and Drop Area -->
+                <v-card
+                  class="mb-4 pa-4"
+                  :class="{ 'drag-over': isDragging }"
+                  @dragover.prevent="isDragging = true"
+                  @dragleave.prevent="isDragging = false"
+                  @drop.prevent="handleDrop"
+                  style="
+                    border: 2px dashed #ccc;
+                    border-radius: 8px;
+                    cursor: pointer;
+                  "
+                  @click="triggerFileInput"
+                >
+                  <div class="text-center">
+                    <v-icon size="48" color="primary" class="mb-2"
+                      >mdi-cloud-upload</v-icon
+                    >
+                    <div class="text-h6 mb-2">
+                      Drag and drop your PDF file here
+                    </div>
+                    <div class="text-body-2 text-medium-emphasis">
+                      or click to browse
+                    </div>
+                  </div>
+                </v-card>
+
+                <!-- File Input (hidden) -->
+                <input
+                  ref="fileInput"
+                  type="file"
                   accept=".pdf"
-                  label="Select PDF file"
-                  prepend-icon="mdi-file-pdf-box"
+                  style="display: none"
                   @change="handleFileSelect"
-                ></v-file-input>
+                />
+
+                <!-- Selected File Info -->
+                <v-card
+                  v-if="selectedFile"
+                  class="mb-4 pa-4"
+                  variant="outlined"
+                >
+                  <div class="d-flex align-center">
+                    <v-icon color="primary" class="mr-2"
+                      >mdi-file-pdf-box</v-icon
+                    >
+                    <div class="flex-grow-1">
+                      <div class="text-subtitle-1">{{ selectedFile.name }}</div>
+                      <div class="text-caption text-medium-emphasis">
+                        {{ formatFileSize(selectedFile.size) }}
+                      </div>
+                    </div>
+                    <v-btn icon @click="clearFile" color="error">
+                      <v-icon>mdi-close</v-icon>
+                    </v-btn>
+                  </div>
+                </v-card>
               </v-col>
             </v-row>
           </v-container>
@@ -313,9 +400,9 @@ onMounted(() => {
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" text @click="uploadDialog = false">
-            Cancel
-          </v-btn>
+          <v-btn color="blue darken-1" text @click="closeUploadDialog"
+            >Cancel</v-btn
+          >
           <v-btn
             color="blue darken-1"
             text
@@ -338,5 +425,10 @@ onMounted(() => {
 <style scoped>
 .v-dialog--fullscreen {
   height: 90vh;
+}
+
+.drag-over {
+  border-color: var(--v-primary-base) !important;
+  background-color: rgba(var(--v-primary-base), 0.05);
 }
 </style>
