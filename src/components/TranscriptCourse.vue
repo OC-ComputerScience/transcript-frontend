@@ -6,6 +6,7 @@ import UniversityTranscriptServices from "../services/universityTranscriptServic
 import UniversityCourseServices from "../services/universityCourseServices";
 import OCCourseServices from "../services/ocCourseServices";
 import SemesterServices from "../services/semesterServices";
+import UploadServices from "../services/transcriptServices";
 
 const route = useRoute();
 const transcriptId = computed(() => route.params.id);
@@ -41,6 +42,10 @@ const defaultItem = {
   status: "Pending",
   grade: "",
 };
+
+const ocrDialog = ref(false);
+const ocrResults = ref(null);
+const ocrLoading = ref(false);
 
 const headers = [
   {
@@ -379,6 +384,104 @@ const approveItem = async (item) => {
   }
 };
 
+const processOCR = async () => {
+  if (!currentTranscript.value) return;
+
+  ocrLoading.value = true;
+  try {
+    const response = await UploadServices.processOCR(
+      currentTranscript.value.id
+    );
+    ocrResults.value = response.data;
+    ocrDialog.value = true;
+  } catch (error) {
+    console.error("Error processing OCR:", error);
+    alert("Error processing OCR. Please try again.");
+  } finally {
+    ocrLoading.value = false;
+  }
+};
+
+const findClosestSemester = (courseSemester) => {
+  if (!courseSemester || !semesters.value.length) return null;
+
+  // Extract year and term from course semester (e.g., "1983 FALL")
+  const [year, term] = courseSemester.split(" ");
+  if (!year || !term) return null;
+
+  // Find semesters that match the year
+  const matchingYearSemesters = semesters.value.filter((s) =>
+    s.name.includes(year)
+  );
+  if (!matchingYearSemesters.length) return null;
+
+  // Find the semester that matches both year and term
+  const exactMatch = matchingYearSemesters.find((s) =>
+    s.name.toLowerCase().includes(term.toLowerCase())
+  );
+  if (exactMatch) return exactMatch;
+
+  // If no exact match, return the first semester from the matching year
+  return matchingYearSemesters[0];
+};
+
+const findMatchingUniversityCourse = (courseNumber) => {
+  if (!courseNumber || !universityCourses.value.length) return null;
+
+  // Try to find an exact match first
+  const exactMatch = universityCourses.value.find(
+    (uc) => uc.courseNumber === courseNumber
+  );
+  if (exactMatch) return exactMatch;
+
+  // If no exact match, try to find a partial match
+  // Remove any spaces or special characters for comparison
+  const normalizedCourseNumber = courseNumber.replace(/[\s-]/g, "");
+  return universityCourses.value.find(
+    (uc) => uc.courseNumber.replace(/[\s-]/g, "") === normalizedCourseNumber
+  );
+};
+
+const addOcrCourses = async () => {
+  if (!ocrResults.value || !currentTranscript.value) return;
+
+  loading.value = true;
+  try {
+    for (const course of ocrResults.value.courses) {
+      // Find the closest matching semester
+      const matchingSemester = findClosestSemester(course.semester);
+
+      // Find matching university course
+      const matchingUniversityCourse = findMatchingUniversityCourse(
+        course.courseNumber
+      );
+
+      const courseData = {
+        universityTranscriptId: currentTranscript.value.id,
+        courseNumber: course.courseNumber,
+        courseDescription: course.courseName,
+        courseHours: course.hours,
+        semesterId: matchingSemester?.id || null,
+        universityCourseId: matchingUniversityCourse?.id || null,
+        grade: course.grade,
+        status: "UnMatched",
+        statusChangedDate: new Date().toISOString(),
+      };
+
+      await TranscriptCourseServices.create(courseData);
+    }
+
+    // Refresh the course list
+    await initialize();
+    ocrDialog.value = false;
+  } catch (error) {
+    console.error("Error adding OCR courses:", error);
+    alert("Error adding courses. Please try again.");
+  } finally {
+    loading.value = false;
+  }
+};
+
 onMounted(() => {
   initialize();
 });
@@ -397,8 +500,22 @@ onMounted(() => {
           <v-btn color="primary" @click="openDialog()" class="mr-2">
             Add Transcript Course
           </v-btn>
-          <v-btn color="secondary" @click="matchCourses" :loading="loading">
+          <v-btn
+            color="secondary"
+            @click="matchCourses"
+            :loading="loading"
+            class="mr-2"
+          >
             Match with OC Courses
+          </v-btn>
+          <v-btn
+            color="info"
+            @click="processOCR"
+            :loading="ocrLoading"
+            :disabled="!currentTranscript"
+          >
+            <v-icon left>mdi-text-recognition</v-icon>
+            Process OCR
           </v-btn>
         </div>
       </v-col>
@@ -430,6 +547,82 @@ onMounted(() => {
         </v-data-table>
       </v-col>
     </v-row>
+
+    <!-- OCR Results Dialog -->
+    <v-dialog v-model="ocrDialog" max-width="800px">
+      <v-card>
+        <v-card-title class="text-h5">
+          OCR Results
+          <v-spacer></v-spacer>
+          <v-btn icon @click="ocrDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-card-text v-if="ocrResults">
+          <v-container>
+            <v-row>
+              <v-col cols="12">
+                <v-card class="mb-4" variant="outlined">
+                  <v-card-text>
+                    <div class="text-h6 mb-2">Student Information</div>
+                    <div>
+                      <strong>Name:</strong> {{ ocrResults.studentName }}
+                    </div>
+                    <div>
+                      <strong>University:</strong> {{ ocrResults.university }}
+                    </div>
+                  </v-card-text>
+                </v-card>
+
+                <v-card variant="outlined">
+                  <v-card-text>
+                    <div class="text-h6 mb-2">
+                      Courses ({{ ocrResults.courses.length }})
+                    </div>
+                    <v-table>
+                      <thead>
+                        <tr>
+                          <th>Course Number</th>
+                          <th>Course Name</th>
+                          <th>Semester</th>
+                          <th>Hours</th>
+                          <th>Grade</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          v-for="course in ocrResults.courses"
+                          :key="course.courseNumber"
+                        >
+                          <td>{{ course.courseNumber }}</td>
+                          <td>{{ course.courseName }}</td>
+                          <td>{{ course.semester }}</td>
+                          <td>{{ course.hours }}</td>
+                          <td>{{ course.grade }}</td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="primary"
+            @click="addOcrCourses"
+            :loading="loading"
+            :disabled="!ocrResults || !ocrResults.courses.length"
+          >
+            Add Courses to Transcript
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-dialog v-model="dialog" max-width="500px">
       <v-card>
