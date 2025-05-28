@@ -5,34 +5,47 @@ const props = defineProps({
   path: { type: String, required: true },
   modelValue: { type: Boolean, required: true },
 });
-console.log(props.path);
 
 const emit = defineEmits(["update:modelValue"]);
-
-const dialog = ref(props.modelValue);
+const loading = ref(true);
+const error = ref(false);
 
 watch(
   () => props.modelValue,
   (newValue) => {
-    dialog.value = newValue;
-  }
+    if (newValue) {
+      loading.value = true;
+      error.value = false;
+    }
+  },
+  { immediate: true }
 );
 
-watch(dialog, (newValue) => {
-  emit("update:modelValue", newValue);
-});
-
 const close = () => {
-  dialog.value = false;
+  emit("update:modelValue", false);
 };
 
 const openInNewTab = () => {
   window.open(props.path, "_blank");
 };
+
+const handleIframeLoad = () => {
+  loading.value = false;
+};
+
+const handleIframeError = () => {
+  loading.value = false;
+  error.value = true;
+};
 </script>
 
 <template>
-  <v-dialog v-model="dialog" max-width="900px" fullscreen>
+  <v-dialog
+    :model-value="modelValue"
+    @update:model-value="$emit('update:modelValue', $event)"
+    max-width="900px"
+    fullscreen
+  >
     <v-card>
       <v-toolbar dark color="primary">
         <v-btn icon dark @click="close">
@@ -46,11 +59,33 @@ const openInNewTab = () => {
         </v-btn>
       </v-toolbar>
       <v-card-text class="pa-0">
+        <div
+          v-if="loading"
+          class="d-flex justify-center align-center"
+          style="height: 80vh"
+        >
+          <v-progress-circular
+            indeterminate
+            color="primary"
+          ></v-progress-circular>
+        </div>
+        <div
+          v-else-if="error"
+          class="d-flex justify-center align-center"
+          style="height: 80vh"
+        >
+          <v-alert type="error" class="ma-4">
+            Error loading PDF. Please try again.
+          </v-alert>
+        </div>
         <iframe
+          v-show="!loading && !error"
           :src="path"
           width="100%"
           height="100%"
           style="border: none; min-height: 80vh"
+          @load="handleIframeLoad"
+          @error="handleIframeError"
         ></iframe>
       </v-card-text>
     </v-card>
