@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import UniversityTranscriptServices from "../services/universityTranscriptServices";
 import UniversityServices from "../services/universityServices";
-import UploadServices from "../services/uploadServices";
+import TranscriptServices from "../services/transcriptServices";
 import PDFViewer from "./PDFViewer.vue";
+import apiClient from "../services/services.js";
 
 const dialog = ref(false);
 const uploadDialog = ref(false);
@@ -160,7 +161,7 @@ const uploadFile = async () => {
 
   console.log("Current transcript:", currentTranscript.value); // Debug log
   try {
-    await UploadServices.uploadTranscript(
+    await TranscriptServices.uploadTranscript(
       selectedFile.value,
       currentTranscript.value.id
     );
@@ -172,8 +173,14 @@ const uploadFile = async () => {
   }
 };
 
-const viewPdf = (item) => {
-  currentPdfUrl.value = `/transcripts/transcript-backend/data/transcripts/transcript-${item.id}.pdf`;
+const viewPdf = async (item) => {
+  // Get the base URL from the API client and remove the /transcript/ suffix
+  const baseUrl = apiClient.defaults.baseURL.replace("/transcript/", "");
+
+  // Add timestamp to prevent caching
+  const timestamp = new Date().getTime();
+  const url = `${baseUrl}/data/transcripts/transcript-${item.id}.pdf?t=${timestamp}`;
+  currentPdfUrl.value = url;
   pdfDialog.value = true;
 };
 
@@ -416,9 +423,26 @@ onMounted(() => {
     </v-dialog>
 
     <!-- PDF Viewer Dialog -->
-    <v-dialog v-model="pdfDialog" max-width="900px" fullscreen>
-      <PDFViewer :path="currentPdfUrl" v-model="pdfDialog" />
-    </v-dialog>
+    <PDFViewer
+      v-if="pdfDialog"
+      :path="currentPdfUrl"
+      :model-value="true"
+      @update:model-value="pdfDialog = $event"
+    />
+    <!-- Debug info -->
+    <div
+      style="
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        background: white;
+        padding: 10px;
+        border: 1px solid black;
+        z-index: 9999;
+      "
+    >
+      Debug: {{ { currentPdfUrl: currentPdfUrl, pdfDialog } }}
+    </div>
   </v-container>
 </template>
 

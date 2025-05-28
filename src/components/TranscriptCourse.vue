@@ -6,7 +6,7 @@ import UniversityTranscriptServices from "../services/universityTranscriptServic
 import UniversityCourseServices from "../services/universityCourseServices";
 import OCCourseServices from "../services/ocCourseServices";
 import SemesterServices from "../services/semesterServices";
-import UploadServices from "../services/uploadServices";
+import UploadServices from "../services/transcriptServices";
 
 const route = useRoute();
 const transcriptId = computed(() => route.params.id);
