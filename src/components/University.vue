@@ -31,12 +31,12 @@ const defaultItem = {
 };
 
 const headers = [
-  { title: "Name", key: "name" },
-  { title: "City", key: "city" },
-  { title: "State", key: "state" },
-  { title: "Country", key: "country" },
-  { title: "OC University ID", key: "oc_university_id" },
-  { title: "Actions", key: "actions", sortable: false },
+  { title: "Name", value: "name", sortable: true },
+  { title: "City", value: "city", sortable: true },
+  { title: "State", value: "state", sortable: true },
+  { title: "Country", value: "country", sortable: true },
+  { title: "OC University ID", value: "oc_university_id", sortable: true },
+  { title: "Actions", value: "actions", sortable: false },
 ];
 
 const formTitle = computed(() => {

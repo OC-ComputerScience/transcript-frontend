@@ -61,6 +61,7 @@ const headers = [
     key: "universityCourse.courseName",
     width: "150px",
   },
+  { title: "OC Course Number", key: "ocCourse.courseNumber", width: "100px" },
   { title: "OC Course", key: "ocCourse.courseName", width: "150px" },
   { title: "Semester", key: "semester.name", width: "100px" },
   { title: "Grade", key: "grade", width: "80px" },
@@ -260,11 +261,11 @@ const matchCourses = async () => {
 
     // Process each transcript course
     for (const transcriptCourse of currentTranscriptCourses) {
-      console.log("Processing course:", transcriptCourse.courseNumber);
+      console.log("\nProcessing course:", transcriptCourse.courseNumber);
 
       // Find matching university course by course number
-      const matchingUniversityCourse = universityCourses.find(
-        (uc) => uc.courseNumber === transcriptCourse.courseNumber
+      const matchingUniversityCourse = findMatchingUniversityCourse(
+        transcriptCourse.courseNumber
       );
       console.log("Matching university course:", matchingUniversityCourse);
 
@@ -283,7 +284,7 @@ const matchCourses = async () => {
               courseNumber: transcriptCourse.courseNumber,
               courseDescription: transcriptCourse.courseDescription,
               courseHours: transcriptCourse.courseHours,
-              universityCourseId: transcriptCourse.universityCourseId,
+              universityCourseId: matchingUniversityCourse.id, // Use the matched university course ID
               OCCourseId: ocCourse.id,
               semesterId: transcriptCourse.semesterId,
               grade: transcriptCourse.grade,
@@ -331,7 +332,17 @@ const matchCourses = async () => {
           } catch (updateError) {
             console.error("Error updating course:", updateError);
           }
+        } else {
+          console.log(
+            "No matching OC course found for university course:",
+            matchingUniversityCourse
+          );
         }
+      } else {
+        console.log(
+          "No matching university course found for:",
+          transcriptCourse.courseNumber
+        );
       }
     }
 
@@ -405,8 +416,23 @@ const processOCR = async () => {
 const findClosestSemester = (courseSemester) => {
   if (!courseSemester || !semesters.value.length) return null;
 
-  // Extract year and term from course semester (e.g., "1983 FALL")
-  const [year, term] = courseSemester.split(" ");
+  // Try both formats: "FALL 1983" and "1983 FALL"
+  let term, year;
+  const parts = courseSemester.split(" ");
+
+  if (parts.length === 2) {
+    // Check if first part is a year (4 digits)
+    if (/^\d{4}$/.test(parts[0])) {
+      // Format: "1983 FALL"
+      [year, term] = parts;
+    } else {
+      // Format: "FALL 1983"
+      [term, year] = parts;
+    }
+  } else {
+    return null;
+  }
+
   if (!year || !term) return null;
 
   // Find semesters that match the year
@@ -415,10 +441,27 @@ const findClosestSemester = (courseSemester) => {
   );
   if (!matchingYearSemesters.length) return null;
 
-  // Find the semester that matches both year and term
-  const exactMatch = matchingYearSemesters.find((s) =>
-    s.name.toLowerCase().includes(term.toLowerCase())
-  );
+  // Map full terms to their abbreviations
+  const termMap = {
+    FALL: "FA",
+    SPRING: "SP",
+    SUMMER: "SU",
+    WINTER: "WI",
+  };
+
+  // Convert term to uppercase for comparison
+  const upperTerm = term.toUpperCase();
+
+  // Find the semester that matches both year and term (including abbreviations)
+  const exactMatch = matchingYearSemesters.find((s) => {
+    const semesterName = s.name.toUpperCase();
+    // Check for both full term and abbreviated term
+    return (
+      semesterName.includes(upperTerm) ||
+      (termMap[upperTerm] && semesterName.includes(termMap[upperTerm]))
+    );
+  });
+
   if (exactMatch) return exactMatch;
 
   // If no exact match, return the first semester from the matching year
@@ -428,17 +471,24 @@ const findClosestSemester = (courseSemester) => {
 const findMatchingUniversityCourse = (courseNumber) => {
   if (!courseNumber || !universityCourses.value.length) return null;
 
+  // Normalize the input course number by removing spaces, hyphens, and converting to uppercase
+  const normalizeCourseNumber = (num) => {
+    return num.replace(/[\s-]/g, "").toUpperCase();
+  };
+
+  const normalizedInput = normalizeCourseNumber(courseNumber);
+
   // Try to find an exact match first
   const exactMatch = universityCourses.value.find(
-    (uc) => uc.courseNumber === courseNumber
+    (uc) => normalizeCourseNumber(uc.courseNumber) === normalizedInput
   );
   if (exactMatch) return exactMatch;
 
   // If no exact match, try to find a partial match
-  // Remove any spaces or special characters for comparison
-  const normalizedCourseNumber = courseNumber.replace(/[\s-]/g, "");
   return universityCourses.value.find(
-    (uc) => uc.courseNumber.replace(/[\s-]/g, "") === normalizedCourseNumber
+    (uc) =>
+      normalizeCourseNumber(uc.courseNumber).includes(normalizedInput) ||
+      normalizedInput.includes(normalizeCourseNumber(uc.courseNumber))
   );
 };
 
@@ -480,6 +530,46 @@ const addOcrCourses = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const calculateTotalHours = (courses) => {
+  return courses.reduce(
+    (total, course) => total + (parseFloat(course.hours) || 0),
+    0
+  );
+};
+
+const calculateGPA = (courses) => {
+  const gradePoints = {
+    "A+": 4.0,
+    A: 4.0,
+    "A-": 3.7,
+    "B+": 3.3,
+    B: 3.0,
+    "B-": 2.7,
+    "C+": 2.3,
+    C: 2.0,
+    "C-": 1.7,
+    "D+": 1.3,
+    D: 1.0,
+    "D-": 0.7,
+    F: 0.0,
+    P: 0.0,
+  };
+
+  let totalPoints = 0;
+  let totalHours = 0;
+
+  courses.forEach((course) => {
+    const hours = parseFloat(course.hours) || 0;
+    const grade = course.grade.toUpperCase();
+    const points = gradePoints[grade] || 0;
+
+    totalPoints += points * hours;
+    totalHours += hours;
+  });
+
+  return totalHours > 0 ? totalPoints / totalHours : 0;
 };
 
 onMounted(() => {
@@ -571,6 +661,14 @@ onMounted(() => {
                     </div>
                     <div>
                       <strong>University:</strong> {{ ocrResults.university }}
+                    </div>
+                    <div class="mt-2">
+                      <strong>Total Hours:</strong>
+                      {{ calculateTotalHours(ocrResults.courses) }}
+                    </div>
+                    <div>
+                      <strong>GPA:</strong>
+                      {{ calculateGPA(ocrResults.courses).toFixed(2) }}
                     </div>
                   </v-card-text>
                 </v-card>
