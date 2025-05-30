@@ -5,6 +5,15 @@ import OCCourseServices from "../services/ocCourseServices";
 const dialog = ref(false);
 const loading = ref(false);
 const ocCourses = ref([]);
+const courseNumberFilter = ref("");
+const filteredCourses = computed(() => {
+  if (!courseNumberFilter.value) return ocCourses.value;
+  return ocCourses.value.filter((course) =>
+    course.courseNumber
+      .toLowerCase()
+      .includes(courseNumberFilter.value.toLowerCase())
+  );
+});
 const editedIndex = ref(-1);
 const editedItem = ref({
   courseNumber: "",
@@ -112,20 +121,41 @@ onMounted(() => {
     </v-row>
 
     <v-row>
+      <v-col cols="12" sm="6" md="4">
+        <v-text-field
+          v-model="courseNumberFilter"
+          label="Filter by Course Number"
+          prepend-icon="mdi-magnify"
+          clearable
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <v-row>
       <v-col cols="12">
-        <v-data-table
-          :headers="headers"
-          :items="ocCourses"
-          :loading="loading"
-          class="elevation-1"
-        >
-          <template v-slot:item.actions="{ item }">
-            <v-icon small class="mr-2" @click="editItem(item)">
-              mdi-pencil
-            </v-icon>
-            <v-icon small @click="deleteItem(item)"> mdi-delete </v-icon>
-          </template>
-        </v-data-table>
+        <v-table>
+          <thead>
+            <tr>
+              <th v-for="header in headers" :key="header.value">
+                {{ header.text }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in filteredCourses" :key="item.id">
+              <td>{{ item.courseNumber }}</td>
+              <td>{{ item.courseName }}</td>
+              <td>{{ item.courseDescription }}</td>
+              <td>{{ item.courseHours }}</td>
+              <td>
+                <v-icon small class="mr-2" @click="editItem(item)">
+                  mdi-pencil
+                </v-icon>
+                <v-icon small @click="deleteItem(item)"> mdi-delete </v-icon>
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
       </v-col>
     </v-row>
 

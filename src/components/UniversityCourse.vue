@@ -11,6 +11,15 @@ const universityCourses = ref([]);
 const universities = ref([]);
 const ocCourses = ref([]);
 const semesters = ref([]);
+const universityFilter = ref("");
+const filteredCourses = computed(() => {
+  if (!universityFilter.value) return universityCourses.value;
+  return universityCourses.value.filter((course) =>
+    course.university?.name
+      ?.toLowerCase()
+      .includes(universityFilter.value.toLowerCase())
+  );
+});
 const editedIndex = ref(-1);
 const editedItem = ref({
   universityId: null,
@@ -20,6 +29,7 @@ const editedItem = ref({
   courseHours: 0,
   OCCourseId: null,
   semesterId: null,
+  effectiveDate: null,
 });
 const defaultItem = {
   universityId: null,
@@ -29,17 +39,20 @@ const defaultItem = {
   courseHours: 0,
   OCCourseId: null,
   semesterId: null,
+  effectiveDate: null,
 };
 
 const headers = [
-  { text: "University", value: "university.name" },
-  { text: "Course Number", value: "courseNumber" },
-  { text: "Course Name", value: "courseName" },
-  { text: "Course Description", value: "courseDescription" },
-  { text: "Course Hours", value: "courseHours" },
-  { text: "OC Course", value: "ocCourse.courseName" },
-  { text: "Semester", value: "semester.name" },
-  { text: "Actions", value: "actions", sortable: false },
+  { title: "University", key: "university.name", sortable: true },
+  { title: "Course Number", key: "courseNumber", sortable: true },
+  { title: "Course Name", key: "courseName", sortable: true },
+  { title: "Course Description", key: "courseDescription", sortable: true },
+  { title: "Course Hours", key: "courseHours", sortable: true },
+  { title: "OC Course Number", key: "ocCourse.courseNumber", sortable: true },
+  { title: "OC Course", key: "ocCourse.courseName", sortable: true },
+  { title: "Semester", key: "semester.name", sortable: true },
+  { title: "Effective Date", key: "effectiveDate", sortable: true },
+  { title: "Actions", key: "actions", sortable: false },
 ];
 
 const formTitle = computed(() => {
@@ -193,10 +206,21 @@ onMounted(() => {
     </v-row>
 
     <v-row>
+      <v-col cols="12" sm="6" md="4">
+        <v-text-field
+          v-model="universityFilter"
+          label="Filter by University"
+          prepend-icon="mdi-magnify"
+          clearable
+        ></v-text-field>
+      </v-col>
+    </v-row>
+
+    <v-row>
       <v-col cols="12">
         <v-data-table
           :headers="headers"
-          :items="universityCourses"
+          :items="filteredCourses"
           :loading="loading"
           class="elevation-1"
         >
@@ -205,6 +229,16 @@ onMounted(() => {
               mdi-pencil
             </v-icon>
             <v-icon small @click="deleteItem(item)"> mdi-delete </v-icon>
+          </template>
+          <template v-slot:[`item.effectiveDate`]="{ item }">
+            {{
+              item.effectiveDate
+                ? new Date(item.effectiveDate).toLocaleDateString()
+                : "N/A"
+            }}
+          </template>
+          <template v-slot:[`item.ocCourse.courseNumber`]="{ item }">
+            {{ item.ocCourse ? item.ocCourse.courseNumber : "N/A" }}
           </template>
         </v-data-table>
       </v-col>
@@ -262,7 +296,7 @@ onMounted(() => {
                 <v-select
                   v-model="editedItem.OCCourseId"
                   :items="ocCourses"
-                  item-title="courseName"
+                  item-title="courseNumber"
                   item-value="id"
                   label="OC Course"
                 ></v-select>
@@ -276,6 +310,14 @@ onMounted(() => {
                   label="Semester"
                   required
                 ></v-select>
+              </v-col>
+              <v-col cols="12" sm="6" md="6">
+                <v-text-field
+                  v-model="editedItem.effectiveDate"
+                  label="Effective Date"
+                  prepend-icon="mdi-calendar"
+                  readonly
+                ></v-text-field>
               </v-col>
             </v-row>
           </v-container>
