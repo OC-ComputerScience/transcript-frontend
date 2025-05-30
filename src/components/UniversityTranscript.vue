@@ -429,20 +429,6 @@ onMounted(() => {
       :model-value="true"
       @update:model-value="pdfDialog = $event"
     />
-    <!-- Debug info -->
-    <div
-      style="
-        position: fixed;
-        bottom: 0;
-        right: 0;
-        background: white;
-        padding: 10px;
-        border: 1px solid black;
-        z-index: 9999;
-      "
-    >
-      Debug: {{ { currentPdfUrl: currentPdfUrl, pdfDialog } }}
-    </div>
   </v-container>
 </template>
 
