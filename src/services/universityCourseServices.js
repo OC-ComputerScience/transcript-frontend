@@ -4,6 +4,9 @@ export default {
   getAll() {
     return apiClient.get(`/universityCourses`);
   },
+  getByUniversityId (universityId)  {
+    return apiClient.get(`/universityCourses/university/${universityId}`);
+  },
   get(id) {
     return apiClient.get(`/universityCourses/${id}`);
   },

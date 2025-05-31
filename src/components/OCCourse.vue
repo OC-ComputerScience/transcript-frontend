@@ -189,12 +189,10 @@ onMounted(() => {
                   required
                 ></v-textarea>
               </v-col>
-              <v-col cols="12">
+              <v-col cols="12" sm="6" md="6">
                 <v-text-field
-                  v-model.number="editedItem.courseHours"
-                  label="Course Hours"
-                  type="number"
-                  required
+                  v-model="editedItem.courseHours"
+                  label="Hours"
                 ></v-text-field>
               </v-col>
             </v-row>

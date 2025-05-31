@@ -178,7 +178,6 @@ onMounted(() => {
                 <v-text-field
                   v-model="editedItem.oc_university_id"
                   label="OC University ID"
-                  type="number"
                 ></v-text-field>
               </v-col>
               <v-col cols="12" sm="6" md="6">

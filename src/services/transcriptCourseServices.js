@@ -4,6 +4,9 @@ export default {
   getAll() {
     return apiClient.get(`/transcriptCourses`);
   },
+  getByTranscriptId(transcriptId) {
+    return apiClient.get(`/transcriptCourses/transcript/${transcriptId}`);
+  },
   get(id) {
     return apiClient.get(`/transcriptCourses/${id}`);
   },

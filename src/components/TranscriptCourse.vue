@@ -47,27 +47,41 @@ const ocrDialog = ref(false);
 const ocrResults = ref(null);
 const ocrLoading = ref(false);
 
+const confirmDialog = ref(false);
+const confirmAction = ref(null);
+const confirmMessage = ref("");
+const confirmTitle = ref("");
+
+const snackbar = ref(false);
+const snackbarMessage = ref("");
+const snackbarColor = ref("success");
+
 const headers = [
   {
     title: "Transcript",
     key: "universityTranscript.OCIdNumber",
-    width: "100px",
+    width: "80px",
   },
-  { title: "Course Number", key: "courseNumber", width: "100px" },
-  { title: "Course Description", key: "courseDescription", width: "200px" },
-  { title: "Course Hours", key: "courseHours", width: "80px" },
+  { title: "Course\nNumber", key: "courseNumber", width: "80px" },
+  { title: "Course\nDescription", key: "courseDescription", width: "150px" },
+  { title: "Course\nHours", key: "courseHours", width: "60px" },
   {
-    title: "University Course",
-    key: "universityCourse.courseName",
-    width: "150px",
+    title: "University\nCourse\nNumber",
+    key: "universityCourse.courseNumber",
+    width: "80px",
   },
-  { title: "OC Course Number", key: "ocCourse.courseNumber", width: "100px" },
-  { title: "OC Course", key: "ocCourse.courseName", width: "150px" },
-  { title: "Semester", key: "semester.name", width: "100px" },
-  { title: "Grade", key: "grade", width: "80px" },
-  { title: "Status", key: "status", width: "100px" },
-  { title: "Status Changed Date", key: "statusChangedDate", width: "150px" },
-  { title: "Actions", key: "actions", sortable: false, width: "120px" },
+  {
+    title: "University\nCourse",
+    key: "universityCourse.courseName",
+    width: "120px",
+  },
+  { title: "OC Course\nNumber", key: "ocCourse.courseNumber", width: "80px" },
+  { title: "OC\nCourse", key: "ocCourse.courseName", width: "120px" },
+  { title: "Semester", key: "semester.name", width: "80px" },
+  { title: "Grade", key: "grade", width: "60px" },
+  { title: "Status", key: "status", width: "80px" },
+  { title: "Status\nChanged\nDate", key: "statusChangedDate", width: "100px" },
+  { title: "Actions", key: "actions", sortable: false, width: "80px" },
 ];
 
 const formTitle = computed(() => {
@@ -76,11 +90,11 @@ const formTitle = computed(() => {
     : "Edit Transcript Course";
 });
 
-const initialize = () => {
+const initialize = async () => {
   loading.value = true;
 
   // Get the current transcript
-  UniversityTranscriptServices.get(transcriptId.value)
+  await UniversityTranscriptServices.get(transcriptId.value)
     .then((response) => {
       currentTranscript.value = response.data;
       editedItem.value.universityTranscriptId = currentTranscript.value.id;
@@ -89,19 +103,18 @@ const initialize = () => {
       console.error("Error fetching transcript:", error);
     });
 
-  // Get transcript courses for this transcript
-  TranscriptCourseServices.getAll()
+  // Get transcript courses for this transcript using the new service
+  await TranscriptCourseServices.getByTranscriptId(transcriptId.value)
     .then((response) => {
-      transcriptCourses.value = response.data.filter(
-        (course) =>
-          course.universityTranscriptId === parseInt(transcriptId.value)
-      );
+      transcriptCourses.value = response.data;
     })
     .catch((error) => {
       console.error("Error fetching transcript courses:", error);
     });
 
-  UniversityCourseServices.getAll()
+  UniversityCourseServices.getByUniversityId(
+    currentTranscript.value.universityId
+  )
     .then((response) => {
       universityCourses.value = response.data;
     })
@@ -136,16 +149,92 @@ const editItem = (item) => {
 };
 
 const deleteItem = (item) => {
-  const index = transcriptCourses.value.indexOf(item);
-  if (confirm("Are you sure you want to delete this transcript course?")) {
-    TranscriptCourseServices.delete(item.id)
-      .then((response) => {
-        transcriptCourses.value.splice(index, 1);
-      })
-      .catch((error) => {
-        console.error("Error deleting transcript course:", error);
-      });
-  }
+  showConfirmDialog(
+    "Delete Course",
+    "Are you sure you want to delete this transcript course?",
+    async () => {
+      const index = transcriptCourses.value.indexOf(item);
+      await TranscriptCourseServices.delete(item.id);
+      transcriptCourses.value.splice(index, 1);
+    }
+  );
+};
+
+const deleteAllCourses = async () => {
+  showConfirmDialog(
+    "Delete All Courses",
+    "Are you sure you want to delete all courses for this transcript?",
+    async () => {
+      try {
+        loading.value = true;
+        const coursesToDelete = transcriptCourses.value.filter(
+          (course) =>
+            course.universityTranscriptId === parseInt(transcriptId.value)
+        );
+
+        for (const course of coursesToDelete) {
+          await TranscriptCourseServices.delete(course.id);
+        }
+
+        await initialize();
+        showSnackbar("All courses deleted successfully");
+      } catch (error) {
+        console.error("Error deleting all courses:", error);
+        showSnackbar("Error deleting courses. Please try again.", "error");
+      } finally {
+        loading.value = false;
+      }
+    }
+  );
+};
+
+const approveAllCourses = async () => {
+  showConfirmDialog(
+    "Approve All Courses",
+    "Are you sure you want to approve all matched courses for this transcript?",
+    async () => {
+      try {
+        loading.value = true;
+        const coursesToApprove = transcriptCourses.value.filter(
+          (course) =>
+            course.universityTranscriptId === parseInt(transcriptId.value) &&
+            course.status === "Matched"
+        );
+
+        if (coursesToApprove.length === 0) {
+          showSnackbar("No matched courses to approve", "info");
+          return;
+        }
+
+        for (const course of coursesToApprove) {
+          const updateData = {
+            universityTranscriptId: course.universityTranscriptId,
+            courseNumber: course.courseNumber,
+            courseDescription: course.courseDescription,
+            courseHours: course.courseHours,
+            universityCourseId: course.universityCourseId,
+            OCCourseId: course.OCCourseId,
+            semesterId: course.semesterId,
+            grade: course.grade,
+            status: "Approved",
+            statusChangedDate: new Date().toISOString(),
+          };
+
+          await TranscriptCourseServices.update(course.id, updateData);
+        }
+
+        await initialize();
+        showSnackbar(
+          `${coursesToApprove.length} courses approved successfully`
+        );
+      } catch (error) {
+        console.error("Error approving all courses:", error);
+        showSnackbar("Error approving courses. Please try again.", "error");
+      } finally {
+        loading.value = false;
+      }
+    }
+  );
 };
 
 const close = () => {
@@ -242,17 +331,19 @@ const matchCourses = async () => {
     const transcriptId = route.params.id;
     console.log("Matching courses for transcript:", transcriptId);
 
-    // Get all transcript courses for this transcript
+    // Get the current transcript first to get its university ID
+    const currentTranscriptResponse = await UniversityTranscriptServices.get(
+      transcriptId
+    );
+    const currentTranscript = currentTranscriptResponse.data;
+    console.log("Current transcript:", currentTranscript);
+
+    // Get all transcript courses for this transcript - make backend request for this specifically
     const transcriptCoursesResponse = await TranscriptCourseServices.getAll();
     const currentTranscriptCourses = transcriptCoursesResponse.data.filter(
       (course) => course.universityTranscriptId === parseInt(transcriptId)
     );
     console.log("Current transcript courses:", currentTranscriptCourses);
-
-    // Get all university courses
-    const universityCoursesResponse = await UniversityCourseServices.getAll();
-    const universityCourses = universityCoursesResponse.data;
-    console.log("University courses:", universityCourses);
 
     // Get all OC courses
     const ocCoursesResponse = await OCCourseServices.getAll();
@@ -265,15 +356,15 @@ const matchCourses = async () => {
 
       // Find matching university course by course number
       const matchingUniversityCourse = findMatchingUniversityCourse(
-        transcriptCourse.courseNumber
+        transcriptCourse.courseNumber,
+        universityCourses
       );
       console.log("Matching university course:", matchingUniversityCourse);
 
       if (matchingUniversityCourse) {
         // Find the OC course from the university course
-        const ocCourse = ocCourses.find(
-          (oc) => oc.id === matchingUniversityCourse.OCCourseId
-        );
+        const ocCourse = matchingUniversityCourse.ocCourse;
+
         console.log("Matching OC course:", ocCourse);
 
         if (ocCourse) {
@@ -284,7 +375,7 @@ const matchCourses = async () => {
               courseNumber: transcriptCourse.courseNumber,
               courseDescription: transcriptCourse.courseDescription,
               courseHours: transcriptCourse.courseHours,
-              universityCourseId: matchingUniversityCourse.id, // Use the matched university course ID
+              universityCourseId: matchingUniversityCourse.id,
               OCCourseId: ocCourse.id,
               semesterId: transcriptCourse.semesterId,
               grade: transcriptCourse.grade,
@@ -305,7 +396,7 @@ const matchCourses = async () => {
                 ...response.data,
                 ocCourse: ocCourse,
                 universityCourse: matchingUniversityCourse,
-                universityTranscript: currentTranscript.value,
+                universityTranscript: currentTranscript,
               };
               console.log("Created updated item:", updatedItem);
 
@@ -350,10 +441,10 @@ const matchCourses = async () => {
     await initialize();
 
     // Show success message
-    alert("Courses matched successfully!");
+    showSnackbar("Courses matched successfully");
   } catch (error) {
     console.error("Error matching courses:", error);
-    alert("Error matching courses. Please try again.");
+    showSnackbar("Error matching courses. Please try again.", "error");
   } finally {
     loading.value = false;
   }
@@ -468,8 +559,12 @@ const findClosestSemester = (courseSemester) => {
   return matchingYearSemesters[0];
 };
 
-const findMatchingUniversityCourse = (courseNumber) => {
-  if (!courseNumber || !universityCourses.value.length) return null;
+const findMatchingUniversityCourse = (
+  courseNumber,
+  courses = universityCourses.value
+) => {
+  console.log("courses", courses);
+  if (!courseNumber || !courses.length) return null;
 
   // Normalize the input course number by removing spaces, hyphens, and converting to uppercase
   const normalizeCourseNumber = (num) => {
@@ -479,13 +574,13 @@ const findMatchingUniversityCourse = (courseNumber) => {
   const normalizedInput = normalizeCourseNumber(courseNumber);
 
   // Try to find an exact match first
-  const exactMatch = universityCourses.value.find(
+  const exactMatch = courses.find(
     (uc) => normalizeCourseNumber(uc.courseNumber) === normalizedInput
   );
   if (exactMatch) return exactMatch;
 
   // If no exact match, try to find a partial match
-  return universityCourses.value.find(
+  return courses.find(
     (uc) =>
       normalizeCourseNumber(uc.courseNumber).includes(normalizedInput) ||
       normalizedInput.includes(normalizeCourseNumber(uc.courseNumber))
@@ -497,36 +592,55 @@ const addOcrCourses = async () => {
 
   loading.value = true;
   try {
-    for (const course of ocrResults.value.courses) {
-      // Find the closest matching semester
+    ocrResults.value.courses.forEach(async (course) => {
       const matchingSemester = findClosestSemester(course.semester);
-
-      // Find matching university course
       const matchingUniversityCourse = findMatchingUniversityCourse(
         course.courseNumber
       );
+      console.log("course", course);
+      console.log("matcht", matchingUniversityCourse);
 
+      // Only set universityCourseId and OCCourseId if we have a match
       const courseData = {
         universityTranscriptId: currentTranscript.value.id,
         courseNumber: course.courseNumber,
         courseDescription: course.courseName,
         courseHours: course.hours,
         semesterId: matchingSemester?.id || null,
-        universityCourseId: matchingUniversityCourse?.id || null,
+        universityCourseId: matchingUniversityCourse
+          ? matchingUniversityCourse.id
+          : null,
+        OCCourseId: matchingUniversityCourse
+          ? matchingUniversityCourse.OCCourseId
+          : null,
         grade: course.grade,
-        status: "UnMatched",
+        status: matchingUniversityCourse ? "Matched" : "UnMatched",
         statusChangedDate: new Date().toISOString(),
       };
 
-      await TranscriptCourseServices.create(courseData);
-    }
+      const response = await TranscriptCourseServices.create(courseData);
 
-    // Refresh the course list
-    await initialize();
+      // Add the created course to the transcriptCourses array with proper relations
+      const newCourse = {
+        ...response.data,
+        universityCourse: matchingUniversityCourse || null,
+        ocCourse: matchingUniversityCourse?.OCCourseId
+          ? ocCourses.value.find(
+              (oc) => oc.id === matchingUniversityCourse.OCCourseId
+            )
+          : null,
+        semester: matchingSemester || null,
+        universityTranscript: currentTranscript.value,
+      };
+
+      transcriptCourses.value.push(newCourse);
+    });
+
+    showSnackbar("Courses added successfully");
     ocrDialog.value = false;
   } catch (error) {
     console.error("Error adding OCR courses:", error);
-    alert("Error adding courses. Please try again.");
+    showSnackbar("Error adding courses. Please try again.", "error");
   } finally {
     loading.value = false;
   }
@@ -572,6 +686,58 @@ const calculateGPA = (courses) => {
   return totalHours > 0 ? totalPoints / totalHours : 0;
 };
 
+const showConfirmDialog = (title, message, action) => {
+  confirmTitle.value = title;
+  confirmMessage.value = message;
+  confirmAction.value = action;
+  confirmDialog.value = true;
+};
+
+const handleConfirm = async () => {
+  if (confirmAction.value) {
+    await confirmAction.value();
+  }
+  confirmDialog.value = false;
+};
+
+const showSnackbar = (message, color = "success") => {
+  snackbarMessage.value = message;
+  snackbarColor.value = color;
+  snackbar.value = true;
+};
+
+const customFilter = (item, queryText, itemText) => {
+  const textOne = item.raw.courseNumber?.toLowerCase() || "";
+  const textTwo = item.raw.courseName?.toLowerCase() || "";
+  const searchText = queryText.toLowerCase();
+
+  return textOne.includes(searchText) || textTwo.includes(searchText);
+};
+
+const handleOCCourseSelect = (selectedCourse) => {
+  if (selectedCourse) {
+    editedItem.value.OCCourseId = selectedCourse.id;
+  } else {
+    editedItem.value.OCCourseId = null;
+  }
+};
+
+const handleUniversityCourseSelect = (selectedCourse) => {
+  if (selectedCourse) {
+    editedItem.value.universityCourseId = selectedCourse.id;
+    // If the university course has an OC course, set it automatically
+    if (selectedCourse.OCCourseId) {
+      editedItem.value.OCCourseId = selectedCourse.OCCourseId;
+    }
+  } else {
+    editedItem.value.universityCourseId = null;
+  }
+};
+
+const formatCourseDisplay = (course) => {
+  return `${course.courseNumber} - ${course.courseName}`;
+};
+
 onMounted(() => {
   initialize();
 });
@@ -584,6 +750,7 @@ onMounted(() => {
         <h1>Transcript Courses</h1>
         <div v-if="currentTranscript" class="mb-4">
           <h2>Transcript: {{ currentTranscript.OCIdNumber }}</h2>
+          <p>Student: {{ currentTranscript.name }}</p>
           <p>University: {{ currentTranscript.university?.name }}</p>
         </div>
         <div class="d-flex align-center">
@@ -603,9 +770,28 @@ onMounted(() => {
             @click="processOCR"
             :loading="ocrLoading"
             :disabled="!currentTranscript"
+            class="mr-2"
           >
             <v-icon left>mdi-text-recognition</v-icon>
             Process OCR
+          </v-btn>
+          <v-btn
+            color="error"
+            @click="deleteAllCourses"
+            :loading="loading"
+            class="ml-2"
+          >
+            <v-icon left>mdi-delete-sweep</v-icon>
+            Delete All Courses
+          </v-btn>
+          <v-btn
+            color="success"
+            @click="approveAllCourses"
+            :loading="loading"
+            class="ml-2"
+          >
+            <v-icon left>mdi-check-all</v-icon>
+            Approve All
           </v-btn>
         </div>
       </v-col>
@@ -633,6 +819,13 @@ onMounted(() => {
               mdi-pencil
             </v-icon>
             <v-icon small @click="deleteItem(item)"> mdi-delete </v-icon>
+          </template>
+          <template v-slot:[`item.statusChangedDate`]="{ item }">
+            {{
+              item.statusChangedDate
+                ? new Date(item.statusChangedDate).toLocaleDateString()
+                : "N/A"
+            }}
           </template>
         </v-data-table>
       </v-col>
@@ -732,16 +925,6 @@ onMounted(() => {
           <v-container>
             <v-row>
               <v-col cols="12">
-                <v-select
-                  v-model="editedItem.universityTranscriptId"
-                  :items="universityTranscripts"
-                  item-title="OCIdNumber"
-                  item-value="id"
-                  label="University Transcript"
-                  required
-                ></v-select>
-              </v-col>
-              <v-col cols="12">
                 <v-text-field
                   v-model="editedItem.courseNumber"
                   label="Course Number"
@@ -764,32 +947,54 @@ onMounted(() => {
                 ></v-text-field>
               </v-col>
               <v-col cols="12">
-                <v-select
+                <v-autocomplete
                   v-model="editedItem.universityCourseId"
                   :items="universityCourses"
-                  item-title="courseName"
+                  :item-title="
+                    (item) => `${item.courseNumber} - ${item.courseName}`
+                  "
                   item-value="id"
                   label="University Course"
-                ></v-select>
+                  :filter="
+                    (item, queryText) => {
+                      const text = (
+                        item.courseNumber +
+                        ' ' +
+                        item.courseName
+                      ).toLowerCase();
+                      const query = queryText.toLowerCase();
+                      return text.includes(query);
+                    }
+                  "
+                  return-object
+                  clearable
+                  @update:model-value="handleUniversityCourseSelect"
+                ></v-autocomplete>
               </v-col>
               <v-col cols="12">
-                <v-select
+                <v-autocomplete
                   v-model="editedItem.OCCourseId"
                   :items="ocCourses"
-                  item-title="courseName"
+                  :item-title="
+                    (item) => `${item.courseNumber} - ${item.courseName}`
+                  "
                   item-value="id"
                   label="OC Course"
-                >
-                  <template v-slot:append>
-                    <v-icon
-                      v-if="editedItem.OCCourseId"
-                      @click.stop="editedItem.OCCourseId = null"
-                      color="error"
-                    >
-                      mdi-close-circle
-                    </v-icon>
-                  </template>
-                </v-select>
+                  :filter="
+                    (item, queryText) => {
+                      const text = (
+                        item.courseNumber +
+                        ' ' +
+                        item.courseName
+                      ).toLowerCase();
+                      const query = queryText.toLowerCase();
+                      return text.includes(query);
+                    }
+                  "
+                  return-object
+                  clearable
+                  @update:model-value="handleOCCourseSelect"
+                ></v-autocomplete>
               </v-col>
               <v-col cols="12">
                 <v-select
@@ -831,17 +1036,63 @@ onMounted(() => {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-dialog v-model="confirmDialog" max-width="400px">
+      <v-card>
+        <v-card-title class="text-h5">
+          {{ confirmTitle }}
+        </v-card-title>
+
+        <v-card-text>
+          {{ confirmMessage }}
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey-darken-1"
+            variant="text"
+            @click="confirmDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn color="primary" variant="text" @click="handleConfirm">
+            Confirm
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar
+      v-model="snackbar"
+      :color="snackbarColor"
+      timeout="3000"
+      location="top"
+    >
+      {{ snackbarMessage }}
+      <template v-slot:actions>
+        <v-btn color="white" variant="text" @click="snackbar = false">
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
 <style scoped>
 .compact-table :deep(th) {
-  padding: 0 4px !important;
-  white-space: nowrap;
+  padding: 0 2px !important;
+  white-space: normal !important;
+  font-size: 0.8rem !important;
+  line-height: 1.1 !important;
+  height: auto !important;
+  min-height: 32px !important;
+  vertical-align: middle !important;
 }
 .compact-table :deep(td) {
-  padding: 0 4px !important;
+  padding: 0 2px !important;
   white-space: nowrap;
+  font-size: 0.8rem !important;
 }
 .compact-table :deep(.v-data-table__wrapper) {
   overflow-x: auto;
@@ -854,8 +1105,20 @@ onMounted(() => {
 .compact-table :deep(.v-data-table__wrapper table th) {
   border: none;
   margin: 0;
+  padding: 0 2px !important;
 }
 .compact-table :deep(.v-data-table__wrapper table tr) {
   border-bottom: thin solid rgba(0, 0, 0, 0.12);
+}
+.compact-table :deep(.v-data-table__wrapper table tr td),
+.compact-table :deep(.v-data-table__wrapper table tr th) {
+  height: 32px !important;
+}
+.compact-table :deep(.v-data-table__wrapper table tr td:not(:last-child)),
+.compact-table :deep(.v-data-table__wrapper table tr th:not(:last-child)) {
+  padding-right: 2px !important;
+}
+.compact-table :deep(.v-data-table__wrapper table tr th) {
+  background-color: rgb(var(--v-theme-surface)) !important;
 }
 </style>

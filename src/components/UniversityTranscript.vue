@@ -305,20 +305,29 @@ onMounted(() => {
                 ></v-text-field>
               </v-col>
               <v-col cols="12">
-                <v-select
+                <v-autocomplete
                   v-model="editedItem.universityId"
                   :items="universities"
                   item-title="name"
                   item-value="id"
                   label="University"
                   required
-                ></v-select>
+                  :filter="
+                    (item, queryText) => {
+                      const text = item.name.toLowerCase();
+                      const query = queryText.toLowerCase();
+                      return text.includes(query);
+                    }
+                  "
+                  clearable
+                ></v-autocomplete>
               </v-col>
-              <v-col cols="12">
-                <v-switch
+              <v-col cols="12" sm="6" md="6">
+                <v-checkbox
                   v-model="editedItem.official"
                   label="Official Transcript"
-                ></v-switch>
+                  color="primary"
+                ></v-checkbox>
               </v-col>
             </v-row>
           </v-container>

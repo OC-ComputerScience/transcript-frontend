@@ -28,7 +28,6 @@ const editedItem = ref({
   courseDescription: "",
   courseHours: 0,
   OCCourseId: null,
-  semesterId: null,
   effectiveDate: null,
 });
 const defaultItem = {
@@ -38,7 +37,6 @@ const defaultItem = {
   courseDescription: "",
   courseHours: 0,
   OCCourseId: null,
-  semesterId: null,
   effectiveDate: null,
 };
 
@@ -50,7 +48,6 @@ const headers = [
   { title: "Course Hours", key: "courseHours", sortable: true },
   { title: "OC Course Number", key: "ocCourse.courseNumber", sortable: true },
   { title: "OC Course", key: "ocCourse.courseName", sortable: true },
-  { title: "Semester", key: "semester.name", sortable: true },
   { title: "Effective Date", key: "effectiveDate", sortable: true },
   { title: "Actions", key: "actions", sortable: false },
 ];
@@ -254,14 +251,22 @@ onMounted(() => {
           <v-container>
             <v-row>
               <v-col cols="12">
-                <v-select
+                <v-autocomplete
                   v-model="editedItem.universityId"
                   :items="universities"
                   item-title="name"
                   item-value="id"
                   label="University"
                   required
-                ></v-select>
+                  :filter="
+                    (item, queryText) => {
+                      const text = item.name.toLowerCase();
+                      const query = queryText.toLowerCase();
+                      return text.includes(query);
+                    }
+                  "
+                  clearable
+                ></v-autocomplete>
               </v-col>
               <v-col cols="12">
                 <v-text-field
@@ -284,32 +289,35 @@ onMounted(() => {
                   required
                 ></v-textarea>
               </v-col>
-              <v-col cols="12">
+              <v-col cols="12" sm="6" md="6">
                 <v-text-field
-                  v-model.number="editedItem.courseHours"
+                  v-model="editedItem.courseHours"
                   label="Course Hours"
-                  type="number"
-                  required
                 ></v-text-field>
               </v-col>
               <v-col cols="12">
-                <v-select
+                <v-autocomplete
                   v-model="editedItem.OCCourseId"
                   :items="ocCourses"
-                  item-title="courseNumber"
+                  :item-title="
+                    (item) => `${item.courseNumber} - ${item.courseName}`
+                  "
                   item-value="id"
                   label="OC Course"
-                ></v-select>
-              </v-col>
-              <v-col cols="12">
-                <v-select
-                  v-model="editedItem.semesterId"
-                  :items="semesters"
-                  item-title="name"
-                  item-value="id"
-                  label="Semester"
                   required
-                ></v-select>
+                  :filter="
+                    (item, queryText) => {
+                      const text = (
+                        item.courseNumber +
+                        ' ' +
+                        item.courseName
+                      ).toLowerCase();
+                      const query = queryText.toLowerCase();
+                      return text.includes(query);
+                    }
+                  "
+                  clearable
+                ></v-autocomplete>
               </v-col>
               <v-col cols="12" sm="6" md="6">
                 <v-text-field
