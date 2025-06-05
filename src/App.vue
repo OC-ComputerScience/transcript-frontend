@@ -4,8 +4,8 @@ import { useRouter } from "vue-router";
 import Utils from "./utils/utils";
 import ocLogo from "/oc-logo-white.png";
 import AuthServices from "./services/authServices";
-import router from "./router/router";
 
+const router = useRouter();
 const logoURL = ref();
 
 logoURL.value = ocLogo;
@@ -30,16 +30,16 @@ const logout = async () => {
     try {
       await AuthServices.logoutUser(user);
       Utils.removeItem("user");
-      router.push("/login");
+      router.push({ name: "Login" });
     } catch (error) {
       console.error("Logout error:", error);
       // Even if the server request fails, we should still log out locally
       Utils.removeItem("user");
-      router.push("/login");
+      router.push({ name: "Login" });
     }
   } else {
     // If no user is found, just redirect to login
-    router.push("/login");
+    router.push({ name: "Login" });
   }
 };
 </script>
