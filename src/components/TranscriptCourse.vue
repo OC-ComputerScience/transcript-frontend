@@ -7,6 +7,8 @@ import UniversityCourseServices from "../services/universityCourseServices";
 import OCCourseServices from "../services/ocCourseServices";
 import SemesterServices from "../services/semesterServices";
 import UploadServices from "../services/transcriptServices";
+import apiClient from "../services/services.js";
+import PDFViewer from "./PDFViewer.vue";
 
 const route = useRoute();
 const transcriptId = computed(() => route.params.id);
@@ -55,6 +57,9 @@ const confirmTitle = ref("");
 const snackbar = ref(false);
 const snackbarMessage = ref("");
 const snackbarColor = ref("success");
+
+const pdfDialog = ref(false);
+const currentPdfUrl = ref("");
 
 const headers = [
   {
@@ -738,6 +743,18 @@ const formatCourseDisplay = (course) => {
   return `${course.courseNumber} - ${course.courseName}`;
 };
 
+const viewTranscript = () => {
+  if (currentTranscript.value) {
+    // Get the base URL from the API client and remove the /transcript/ suffix
+    const baseUrl = apiClient.defaults.baseURL.replace("/transcript/", "");
+    // Add timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    const url = `${baseUrl}/data/transcripts/transcript-${currentTranscript.value.id}.pdf?t=${timestamp}`;
+    currentPdfUrl.value = url;
+    pdfDialog.value = true;
+  }
+};
+
 onMounted(() => {
   initialize();
 });
@@ -749,9 +766,17 @@ onMounted(() => {
       <v-col cols="12">
         <h1>Transcript Courses</h1>
         <div v-if="currentTranscript" class="mb-4">
-          <h2>Transcript: {{ currentTranscript.OCIdNumber }}</h2>
-          <p>Student: {{ currentTranscript.name }}</p>
-          <p>University: {{ currentTranscript.university?.name }}</p>
+          <div class="d-flex align-center">
+            <div>
+              <h2>Transcript: {{ currentTranscript.OCIdNumber }}</h2>
+              <p>Student: {{ currentTranscript.name }}</p>
+              <p>University: {{ currentTranscript.university?.name }}</p>
+            </div>
+            <v-btn color="primary" class="ml-4" @click="viewTranscript">
+              <v-icon left>mdi-file-pdf-box</v-icon>
+              View Transcript
+            </v-btn>
+          </div>
         </div>
         <div class="d-flex align-center">
           <v-btn color="primary" @click="openDialog()" class="mr-2">
@@ -1076,6 +1101,9 @@ onMounted(() => {
         </v-btn>
       </template>
     </v-snackbar>
+
+    <!-- PDF Viewer Dialog -->
+    <PDFViewer v-model="pdfDialog" :path="currentPdfUrl" />
   </v-container>
 </template>
 
