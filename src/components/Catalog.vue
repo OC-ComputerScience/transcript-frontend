@@ -215,3 +215,9 @@ onMounted(() => {
   initialize();
 });
 </script>
+
+<style scoped>
+.v-data-table :deep(th) {
+  font-weight: bold !important;
+}
+</style>

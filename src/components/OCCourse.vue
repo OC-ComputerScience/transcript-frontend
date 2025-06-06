@@ -29,11 +29,27 @@ const defaultItem = {
 };
 
 const headers = [
-  { text: "Course Number", value: "courseNumber" },
-  { text: "Course Name", value: "courseName" },
-  { text: "Course Description", value: "courseDescription" },
-  { text: "Course Hours", value: "courseHours" },
-  { text: "Actions", value: "actions", sortable: false },
+  {
+    title: "Course Number",
+    key: "courseNumber",
+    sortable: true,
+    width: "150px",
+  },
+  { title: "Course Name", key: "courseName", sortable: true, width: "200px" },
+  {
+    title: "Course Description",
+    key: "courseDescription",
+    sortable: true,
+    width: "400px",
+  },
+  { title: "Course Hours", key: "courseHours", sortable: true, width: "150px" },
+  {
+    title: "Actions",
+    key: "actions",
+    sortable: false,
+    width: "120px",
+    align: "center",
+  },
 ];
 
 const formTitle = computed(() => {
@@ -133,29 +149,21 @@ onMounted(() => {
 
     <v-row>
       <v-col cols="12">
-        <v-table>
-          <thead>
-            <tr>
-              <th v-for="header in headers" :key="header.value">
-                {{ header.text }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in filteredCourses" :key="item.id">
-              <td>{{ item.courseNumber }}</td>
-              <td>{{ item.courseName }}</td>
-              <td>{{ item.courseDescription }}</td>
-              <td>{{ item.courseHours }}</td>
-              <td>
-                <v-icon small class="mr-2" @click="editItem(item)">
-                  mdi-pencil
-                </v-icon>
-                <v-icon small @click="deleteItem(item)"> mdi-delete </v-icon>
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
+        <v-data-table
+          :headers="headers"
+          :items="filteredCourses"
+          :loading="loading"
+          class="elevation-1"
+          :items-per-page="10"
+          :items-per-page-options="[10, 20, 50, 100]"
+        >
+          <template v-slot:[`item.actions`]="{ item }">
+            <v-icon small class="mr-2" @click="editItem(item.raw)">
+              mdi-pencil
+            </v-icon>
+            <v-icon small @click="deleteItem(item.raw)"> mdi-delete </v-icon>
+          </template>
+        </v-data-table>
       </v-col>
     </v-row>
 
@@ -208,3 +216,9 @@ onMounted(() => {
     </v-dialog>
   </v-container>
 </template>
+
+<style scoped>
+.v-data-table :deep(th) {
+  font-weight: bold !important;
+}
+</style>

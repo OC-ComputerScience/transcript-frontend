@@ -1148,5 +1148,6 @@ onMounted(() => {
 }
 .compact-table :deep(.v-data-table__wrapper table tr th) {
   background-color: rgb(var(--v-theme-surface)) !important;
+  font-weight: bold !important;
 }
 </style>

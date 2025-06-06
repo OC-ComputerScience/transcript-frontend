@@ -340,3 +340,9 @@ onMounted(() => {
     </v-dialog>
   </v-container>
 </template>
+
+<style scoped>
+.v-data-table :deep(th) {
+  font-weight: bold !important;
+}
+</style>

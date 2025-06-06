@@ -30,21 +30,24 @@ const apiClient = axios.create({
     return JSON.stringify(data);
   },
   transformResponse: function (data) {
-    data = JSON.parse(data);
+    try {
+      data = JSON.parse(data);
 
-    if (data.message !== undefined && data.message.includes("Unauthorized")) {
-      AuthServices.logoutUser(Utils.getStore("user"))
-        .then((response) => {
-          console.log(response);
-          Utils.removeItem("user");
-          Router.push({ name: "login" });
-        })
-        .catch((error) => {
-          console.log("error", error);
-        });
+      if (data.message !== undefined && 
+          (data.message.includes("Unauthorized") || 
+           data.message.includes("Token expired") ||
+           data.message.includes("Invalid token") ||
+           data.message.includes("No Auth Header"))) {
+        Utils.removeItem("user");
+        Router.push('/login');
+        return Promise.reject(data);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in transformResponse:', error);
+      return data;
     }
-
-    return data;
   },
 });
 

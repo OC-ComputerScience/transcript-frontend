@@ -16,7 +16,6 @@ const menuItems = [
   { title: "University Courses", path: "/university-courses" },
   { title: "OC Courses", path: "/oc-courses" },
   { title: "Semesters", path: "/semesters" },
-  { title: "Catalogs", path: "/catalogs" },
 ];
 
 function isLoggedIn() {

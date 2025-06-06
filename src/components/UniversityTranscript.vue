@@ -450,4 +450,8 @@ onMounted(() => {
   border-color: var(--v-primary-base) !important;
   background-color: rgba(var(--v-primary-base), 0.05);
 }
+
+.v-data-table :deep(th) {
+  font-weight: bold !important;
+}
 </style>
