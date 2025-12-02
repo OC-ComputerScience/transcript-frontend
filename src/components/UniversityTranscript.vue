@@ -30,6 +30,11 @@ const defaultItem = {
 };
 const fileInput = ref(null);
 const isDragging = ref(false);
+const formErrors = ref({
+  OCIdNumber: false,
+  name: false,
+  universityId: false,
+});
 
 const headers = [
   { title: "OC ID Number", key: "OCIdNumber" },
@@ -92,6 +97,22 @@ const close = () => {
   editedItem.value = Object.assign({}, defaultItem);
   editedIndex.value = -1;
 };
+
+const validateForm = () => {
+  formErrors.value.OCIdNumber = !editedItem.value.OCIdNumber;
+  formErrors.value.name = !editedItem.value.name;
+  formErrors.value.universityId = !editedItem.value.universityId;
+
+  return !Object.values(formErrors.value).some((error) => error);
+};
+
+const isFormValid = computed(() => {
+  return (
+    editedItem.value.OCIdNumber &&
+    editedItem.value.name &&
+    editedItem.value.universityId
+  );
+});
 
 const save = async () => {
   if (editedIndex.value > -1) {
@@ -295,6 +316,11 @@ onMounted(() => {
                   v-model="editedItem.OCIdNumber"
                   label="OC ID Number"
                   required
+                  :error="formErrors.OCIdNumber"
+                  :error-messages="
+                    formErrors.OCIdNumber ? 'OC ID Number is required' : ''
+                  "
+                  @input="formErrors.OCIdNumber = false"
                 ></v-text-field>
               </v-col>
               <v-col cols="12">
@@ -302,6 +328,11 @@ onMounted(() => {
                   v-model="editedItem.name"
                   label="Student Name"
                   required
+                  :error="formErrors.name"
+                  :error-messages="
+                    formErrors.name ? 'Student Name is required' : ''
+                  "
+                  @input="formErrors.name = false"
                 ></v-text-field>
               </v-col>
               <v-col cols="12">
@@ -312,6 +343,11 @@ onMounted(() => {
                   item-value="id"
                   label="University"
                   required
+                  :error="formErrors.universityId"
+                  :error-messages="
+                    formErrors.universityId ? 'University is required' : ''
+                  "
+                  @update:model-value="formErrors.universityId = false"
                   :filter="
                     (item, queryText) => {
                       const text = item.name.toLowerCase();
@@ -336,7 +372,13 @@ onMounted(() => {
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="blue darken-1" text @click="close">Cancel</v-btn>
-          <v-btn color="blue darken-1" text @click="save">Save</v-btn>
+          <v-btn
+            color="blue darken-1"
+            text
+            @click="save"
+            :disabled="!isFormValid"
+            >Save</v-btn
+          >
         </v-card-actions>
       </v-card>
     </v-dialog>

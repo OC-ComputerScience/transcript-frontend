@@ -26,7 +26,7 @@ const editedItem = ref({
   courseNumber: "",
   courseName: "",
   courseDescription: "",
-  courseHours: 0,
+  courseHours: null,
   OCCourseId: null,
   effectiveDate: null,
 });
@@ -35,10 +35,31 @@ const defaultItem = {
   courseNumber: "",
   courseName: "",
   courseDescription: "",
-  courseHours: 0,
+  courseHours: null,
   OCCourseId: null,
   effectiveDate: null,
 };
+
+const formErrors = ref({
+  universityId: false,
+  courseNumber: false,
+  courseName: false,
+  courseHours: false,
+  ocCourseId: false,
+  effectiveDate: false,
+});
+
+const isFormValid = computed(() => {
+  return Boolean(
+    editedItem.value.universityId &&
+      editedItem.value.courseNumber &&
+      editedItem.value.courseName &&
+      editedItem.value.courseDescription &&
+      editedItem.value.courseHours &&
+      editedItem.value.OCCourseId &&
+      editedItem.value.effectiveDate
+  );
+});
 
 const headers = [
   { title: "University", key: "university.name", sortable: true },
@@ -258,6 +279,11 @@ onMounted(() => {
                   item-value="id"
                   label="University"
                   required
+                  :error="formErrors.universityId"
+                  :error-messages="
+                    formErrors.universityId ? 'University is required' : ''
+                  "
+                  @update:model-value="formErrors.universityId = false"
                   :filter="
                     (item, queryText) => {
                       const text = item.name.toLowerCase();
@@ -273,6 +299,11 @@ onMounted(() => {
                   v-model="editedItem.courseNumber"
                   label="Course Number"
                   required
+                  :error="formErrors.courseNumber"
+                  :error-messages="
+                    formErrors.courseNumber ? 'Course Number is required' : ''
+                  "
+                  @input="formErrors.courseNumber = false"
                 ></v-text-field>
               </v-col>
               <v-col cols="12">
@@ -280,6 +311,11 @@ onMounted(() => {
                   v-model="editedItem.courseName"
                   label="Course Name"
                   required
+                  :error="formErrors.courseName"
+                  :error-messages="
+                    formErrors.courseName ? 'Course Name is required' : ''
+                  "
+                  @input="formErrors.courseName = false"
                 ></v-text-field>
               </v-col>
               <v-col cols="12">
@@ -293,6 +329,13 @@ onMounted(() => {
                 <v-text-field
                   v-model="editedItem.courseHours"
                   label="Course Hours"
+                  type="number"
+                  required
+                  :error="formErrors.courseHours"
+                  :error-messages="
+                    formErrors.courseHours ? 'Course Hours is required' : ''
+                  "
+                  @input="formErrors.courseHours = false"
                 ></v-text-field>
               </v-col>
               <v-col cols="12">
@@ -305,6 +348,11 @@ onMounted(() => {
                   item-value="id"
                   label="OC Course"
                   required
+                  :error="formErrors.ocCourseId"
+                  :error-messages="
+                    formErrors.ocCourseId ? 'OC Course is required' : ''
+                  "
+                  @update:model-value="formErrors.ocCourseId = false"
                   :filter="
                     (item, queryText) => {
                       const text = (
@@ -323,8 +371,13 @@ onMounted(() => {
                 <v-text-field
                   v-model="editedItem.effectiveDate"
                   label="Effective Date"
-                  prepend-icon="mdi-calendar"
-                  readonly
+                  type="date"
+                  required
+                  :error="formErrors.effectiveDate"
+                  :error-messages="
+                    formErrors.effectiveDate ? 'Effective Date is required' : ''
+                  "
+                  @input="formErrors.effectiveDate = false"
                 ></v-text-field>
               </v-col>
             </v-row>
@@ -334,7 +387,13 @@ onMounted(() => {
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="blue darken-1" text @click="close">Cancel</v-btn>
-          <v-btn color="blue darken-1" text @click="save">Save</v-btn>
+          <v-btn
+            color="blue darken-1"
+            text
+            @click="save"
+            :disabled="!isFormValid"
+            >Save</v-btn
+          >
         </v-card-actions>
       </v-card>
     </v-dialog>

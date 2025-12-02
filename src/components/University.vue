@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from "vue";
 import UniversityServices from "../services/universityServices";
 
 const dialog = ref(false);
+const deleteDialog = ref(false);
+const itemToDelete = ref(null);
 const loading = ref(false);
 const universities = ref([]);
 const universityNameFilter = ref("");
@@ -29,6 +31,15 @@ const defaultItem = {
   country: "",
   oc_university_id: null,
 };
+
+const formErrors = ref({
+  name: false,
+  oc_university_id: false,
+});
+
+const isFormValid = computed(() => {
+  return editedItem.value.name && editedItem.value.oc_university_id;
+});
 
 const headers = [
   { title: "Name", value: "name", sortable: true },
@@ -65,16 +76,21 @@ const editItem = (item) => {
 };
 
 const deleteItem = (item) => {
-  const index = universities.value.indexOf(item);
-  if (confirm("Are you sure you want to delete this university?")) {
-    UniversityServices.delete(item.id)
-      .then(() => {
-        universities.value.splice(index, 1);
-      })
-      .catch((error) => {
-        console.error("Error deleting university:", error);
-      });
-  }
+  itemToDelete.value = item;
+  deleteDialog.value = true;
+};
+
+const confirmDelete = () => {
+  const index = universities.value.indexOf(itemToDelete.value);
+  UniversityServices.delete(itemToDelete.value.id)
+    .then((response) => {
+      universities.value.splice(index, 1);
+      deleteDialog.value = false;
+      itemToDelete.value = null;
+    })
+    .catch((error) => {
+      console.error("Error deleting university:", error);
+    });
 };
 
 const close = () => {
@@ -168,34 +184,48 @@ onMounted(() => {
         <v-card-text>
           <v-container>
             <v-row>
-              <v-col cols="12" sm="6" md="6">
+              <v-col cols="12">
                 <v-text-field
                   v-model="editedItem.name"
                   label="University Name"
+                  required
+                  :error="formErrors.name"
+                  :error-messages="
+                    formErrors.name ? 'University Name is required' : ''
+                  "
+                  @input="formErrors.name = false"
                 ></v-text-field>
               </v-col>
-              <v-col cols="12" sm="6" md="6">
-                <v-text-field
-                  v-model="editedItem.oc_university_id"
-                  label="OC University ID"
-                ></v-text-field>
-              </v-col>
-              <v-col cols="12" sm="6" md="6">
+              <v-col cols="12">
                 <v-text-field
                   v-model="editedItem.city"
                   label="City"
                 ></v-text-field>
               </v-col>
-              <v-col cols="12" sm="6" md="6">
+              <v-col cols="12">
                 <v-text-field
                   v-model="editedItem.state"
                   label="State"
                 ></v-text-field>
               </v-col>
-              <v-col cols="12" sm="6" md="6">
+              <v-col cols="12">
                 <v-text-field
                   v-model="editedItem.country"
                   label="Country"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="12">
+                <v-text-field
+                  v-model="editedItem.oc_university_id"
+                  label="OC University ID"
+                  required
+                  :error="formErrors.oc_university_id"
+                  :error-messages="
+                    formErrors.oc_university_id
+                      ? 'OC University ID is required'
+                      : ''
+                  "
+                  @input="formErrors.oc_university_id = false"
                 ></v-text-field>
               </v-col>
             </v-row>
@@ -204,12 +234,32 @@ onMounted(() => {
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue-darken-1" variant="text" @click="close">
-            Cancel
-          </v-btn>
-          <v-btn color="blue-darken-1" variant="text" @click="save">
-            Save
-          </v-btn>
+          <v-btn color="blue darken-1" text @click="close">Cancel</v-btn>
+          <v-btn
+            color="blue darken-1"
+            text
+            @click="save"
+            :disabled="!isFormValid"
+            >Save</v-btn
+          >
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="deleteDialog" max-width="400px">
+      <v-card>
+        <v-card-title class="text-h5">Delete University</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete this university? This action cannot be
+          undone.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey darken-1" text @click="deleteDialog = false"
+            >Cancel</v-btn
+          >
+          <v-btn color="error" text @click="confirmDelete">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
